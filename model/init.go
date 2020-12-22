@@ -2,7 +2,7 @@ package model
 
 import (
 	"fmt"
-	"github.com/jinzhu/gorm"
+	"gorm.io/gorm"
 )
 
 var GDB1 *gorm.DB
