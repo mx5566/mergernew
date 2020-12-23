@@ -2,6 +2,11 @@ package model
 
 import (
 	"fmt"
+	"gorm.io/driver/mysql"
+	"gorm.io/gorm/logger"
+	"gorm.io/gorm/schema"
+	"time"
+
 	"gorm.io/gorm"
 )
 
@@ -20,25 +25,34 @@ DBNameC = "information_schema"
 DBTablePrefix = ""
 )
 
-func NewDB(dbType, user, password, host, dbname, tablePrefix string) (*gorm.DB, error){
+func NewDB(user, password, host, dbname, tablePrefix string) (*gorm.DB, error){
 	var err error
 
-	db, err := gorm.Open(dbType, fmt.Sprintf("%s:%s@tcp(%s)/%s?charset=utf8mb4&parseTime=True&loc=Local",
+	dia := 	mysql.Open(fmt.Sprintf("%s:%s@tcp(%s)/%s?charset=utf8mb4&parseTime=True&loc=Local",
 		user, password, host, dbname))
+	db, err := gorm.Open(dia, &gorm.Config{  NamingStrategy: schema.NamingStrategy{
+		TablePrefix: "",   // 表名前缀
+		SingularTable: true, // 使用单数表名，启用该选项，此时，`Article` 的表名应该是 `article`
+
+	},
+		Logger: logger.Default.LogMode(logger.Info),
+		AllowGlobalUpdate: true,
+	})
 
 	if err != nil {
 		fmt.Println(err)
 		return nil, err
 	}
 
-	gorm.DefaultTableNameHandler = func (db *gorm.DB, defaultTableName string) string  {
-		return tablePrefix + defaultTableName;
+	sqlDB, err := db.DB()
+	if err != nil {
+		return nil, err
 	}
 
-	db.SingularTable(true)
-	db.LogMode(true)
-	db.DB().SetMaxIdleConns(10)
-	db.DB().SetMaxOpenConns(100)
+	sqlDB.SetMaxIdleConns(10)
+	sqlDB.SetMaxOpenConns(100)
+	sqlDB.SetConnMaxLifetime(time.Hour)
+
 	return db, nil
 }
 
