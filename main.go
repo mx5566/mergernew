@@ -94,9 +94,9 @@ func main() {
 	//model.GDB2.Begin() 好像加了事务还慢了
 	length := len(itemIDs)
 
-	a := (length * 1.0) / (1.0 * BaseLength)
+	a := float64(length) / float64(BaseLength)
 
-	l1 := math.Ceil(float64(a))
+	l1 := math.Ceil(a)
 
 	fmt.Println(l1)
 	model.GDB2.Begin()
@@ -214,7 +214,7 @@ func main() {
 		panic(err)
 	}
 	if c == 0 {
-		err = model.GDB1.Exec("ALTER TABLE '%s' ADD COLUMN '%s' VARCHAR(32) default NULL", target_table_name, column_name).Error
+		err = model.GDB1.Exec(fmt.Sprintf("ALTER TABLE %s ADD COLUMN %s VARCHAR(32) default NULL;", target_table_name, column_name)).Error
 		if  err != nil {
 			panic(err)
 		}
@@ -223,6 +223,12 @@ func main() {
 	err = model.GDB3.Table("columns").Where("table_schema = ? and table_name = ? and column_name = ?", target_database_copy, target_table_name_copy, column_name).Select("count(*) as count").Count(&c).Error
 	if  err != nil {
 		panic(err)
+	}
+	if c == 0 {
+		err = model.GDB2.Exec(fmt.Sprintf("ALTER TABLE %s ADD COLUMN %s VARCHAR(32) default NULL;", target_table_name_copy, column_name)).Error
+		if  err != nil {
+			panic(err)
+		}
 	}
 
 
