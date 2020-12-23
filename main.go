@@ -219,6 +219,7 @@ func main() {
 			panic(err)
 		}
 	}
+	
 
 	err = model.GDB3.Table("columns").Where("table_schema = ? and table_name = ? and column_name = ?", target_database_copy, target_table_name_copy, column_name).Select("count(*) as count").Count(&c).Error
 	if  err != nil {
