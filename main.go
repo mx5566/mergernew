@@ -1,17 +1,19 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
+	"github.com/mx5566/mergernew/model"
 	_ "gorm.io/driver/mysql"
 	"gorm.io/gorm"
-	"github.com/mx5566/mergernew/model"
 	"math"
+	"time"
 )
 
 const BaseLength = 10000
 
 func main() {
-	model.GDB1, _ = model.NewDB( model.DBUser, model.DBPasswd, model.DBHost, model.DBNameA, model.DBTablePrefix)
+	model.GDB1, _ = model.NewDB(model.DBUser, model.DBPasswd, model.DBHost, model.DBNameA, model.DBTablePrefix)
 	model.GDB2, _ = model.NewDB(model.DBUser, model.DBPasswd, model.DBHost, model.DBNameB, model.DBTablePrefix)
 	model.GDB3, _ = model.NewDB(model.DBUser, model.DBPasswd, model.DBHost, model.DBNameC, model.DBTablePrefix)
 
@@ -29,13 +31,11 @@ func main() {
 	}
 	var result MaxStruct
 
-
 	err := model.GDB1.Raw("select max(role_id) as max from role_data;").Scan(&result).Error
 	if err != nil {
 		panic(err)
 	}
 	MaxRoleID = result.Max
-
 
 	err = model.GDB2.Raw("select max(role_id) as max from role_data;").Scan(&result).Error
 	if err != nil {
@@ -123,22 +123,22 @@ func main() {
 	}
 
 	/*
-	UPDATE guild_hebin_copy SET creater_name_id=creater_name_id+increase_num;
-	UPDATE guild_hebin_copy SET leader_id=leader_id+increase_num;
-	UPDATE item_del_hebin_copy SET owner_id=owner_id+increase_num;
+		UPDATE guild_hebin_copy SET creater_name_id=creater_name_id+increase_num;
+		UPDATE guild_hebin_copy SET leader_id=leader_id+increase_num;
+		UPDATE item_del_hebin_copy SET owner_id=owner_id+increase_num;
 	*/
 	err = model.GDB2.Table("guild").Updates(map[string]interface{}{"creater_name_id": gorm.Expr("creater_name_id + ?", increaseNum)}).Error
-	if  err != nil {
+	if err != nil {
 		panic(err)
 	}
 
 	err = model.GDB2.Table("guild").Updates(map[string]interface{}{"leader_id": gorm.Expr("leader_id + ?", increaseNum)}).Error
-	if  err != nil {
+	if err != nil {
 		panic(err)
 	}
 
 	err = model.GDB2.Table("item_del").Updates(map[string]interface{}{"owner_id": gorm.Expr("owner_id + ?", increaseNum)}).Error
-	if  err != nil {
+	if err != nil {
 		panic(err)
 	}
 
@@ -149,17 +149,17 @@ func main() {
 	*/
 
 	err = model.GDB2.Table("friend").Updates(map[string]interface{}{"friend_id": gorm.Expr("friend_id + ?", increaseNum)}).Error
-	if  err != nil {
+	if err != nil {
 		panic(err)
 	}
 
 	err = model.GDB2.Table("blacklist").Updates(map[string]interface{}{"black_id": gorm.Expr("black_id + ?", increaseNum)}).Error
-	if  err != nil {
+	if err != nil {
 		panic(err)
 	}
 
 	err = model.GDB2.Table("enemy").Updates(map[string]interface{}{"enemy_id": gorm.Expr("enemy_id + ?", increaseNum)}).Error
-	if  err != nil {
+	if err != nil {
 		panic(err)
 	}
 
@@ -169,12 +169,12 @@ func main() {
 	*/
 
 	err = model.GDB2.Table("mail").Where("recv_role_id != ?", 4294967295).Updates(map[string]interface{}{"recv_role_id": gorm.Expr("recv_role_id + ?", increaseNum)}).Error
-	if  err != nil {
+	if err != nil {
 		panic(err)
 	}
 
 	err = model.GDB2.Table("mail").Where("send_role_id != ?", 4294967295).Updates(map[string]interface{}{"send_role_id": gorm.Expr("send_role_id + ?", increaseNum)}).Error
-	if  err != nil {
+	if err != nil {
 		panic(err)
 	}
 
@@ -204,37 +204,128 @@ func main() {
 		end if;
 
 
-	 */
+	*/
 
 	var c int64 = 0
 
 	// 计算个数
 	err = model.GDB3.Table("columns").Where("table_schema = ? and table_name = ? and column_name = ?", target_database, target_table_name, column_name).Select("count(*) as count").Count(&c).Error
-	if  err != nil {
+	if err != nil {
 		panic(err)
 	}
 	if c == 0 {
 		err = model.GDB1.Exec(fmt.Sprintf("ALTER TABLE %s ADD COLUMN %s VARCHAR(32) default NULL;", target_table_name, column_name)).Error
-		if  err != nil {
+		if err != nil {
 			panic(err)
 		}
 	}
 
 	err = model.GDB3.Table("columns").Where("table_schema = ? and table_name = ? and column_name = ?", target_database_copy, target_table_name_copy, column_name).Select("count(*) as count").Count(&c).Error
-	if  err != nil {
+	if err != nil {
 		panic(err)
 	}
 	if c == 0 {
 		err = model.GDB2.Exec(fmt.Sprintf("ALTER TABLE %s ADD COLUMN %s VARCHAR(32) default NULL;", target_table_name_copy, column_name)).Error
-		if  err != nil {
+		if err != nil {
 			panic(err)
 		}
 	}
 
+	// 更新两个role_data表
+	err = model.GDB1.Exec("update role_data set role_name_origin = role_name where ISNULL(role_name_origin);").Error
+	if err != nil {
+		panic(err)
+	}
 
+	err = model.GDB2.Exec("update role_data set role_name_origin = role_name where ISNULL(role_name_origin);").Error
+	if err != nil {
+		panic(err)
+	}
 
+	// 处理account_common表
+	var accounts1 []*model.AccountCommon
+	err = model.GDB1.Select("account_id, baibao_yuanbao, total_recharge, yuanbao_recharge, data_ex").Find(&accounts1).Error
+	//
+	if err != nil {
+		panic(err)
+	}
 
+	var accounts2 []*model.AccountCommon
+	err = model.GDB2.Find(&accounts2).Error
+	//
+	if err != nil {
+		panic(err)
+	}
 
+	// 把相同account_id的账号的数据充值元宝合并 data_ex 是个json串需要单独处理
+	a2 := make(map[uint32]*model.AccountCommon)
 
+	alreadyAccount := make([]*model.AccountCommon, 0)
+	notExistAccount := make([]*model.AccountCommon, 0)
+
+	for _, v2 := range accounts2 {
+		a2[v2.AccountID] = v2
+	}
+
+	// A为基准
+	for _, v1 := range accounts1 {
+		if _, ok := a2[v1.AccountID]; !ok {
+			// 没有找到对应的账号，直接插入
+			continue
+		}
+
+		// 找到对应的数据，数据叠加
+		v1.BaiBaoYuanBao += a2[v1.AccountID].BaiBaoYuanBao
+		v1.TotalRecharge += a2[v1.AccountID].TotalRecharge
+		v1.YuanBaoRecharge += a2[v1.AccountID].YuanBaoRecharge
+
+		// 修改data_ex字段
+		d1 := v1.DataEx
+		d2 := a2[v1.AccountID].DataEx
+		de1 := new(model.DataEx)
+		de2 := new(model.DataEx)
+
+		if d1 == "" {
+			d1 = "{}"
+		}
+
+		if d2 == "" {
+			d2 = "{}"
+		}
+		// seconds
+		s := time.Now().Unix()
+		day := s / (60 * 60 * 24)
+
+		err := json.Unmarshal([]byte(d1), de1)
+		if err != nil {
+			panic(err)
+		}
+
+		err = json.Unmarshal([]byte(d2), de2)
+		if err != nil {
+			panic(err)
+		}
+
+		if day == int64(de1.TodayRechargeDay) && day == int64(de2.TodayRechargeDay) {
+			de1.TodayRecharge += de2.TodayRecharge
+		} else if day == int64(de2.TodayRechargeDay) {
+			de1.TodayRecharge = de2.TodayRecharge
+			de1.TodayRechargeDay = de2.TodayRechargeDay
+		}
+
+		if de1.TodayRechargeDay != 0 {
+			by, err := json.Marshal(&de1)
+			if err != nil {
+				panic(err)
+			}
+			v1.DataEx = string(by)
+		} else {
+			v1.DataEx = "{}"
+		}
+
+		alreadyAccount = append(alreadyAccount, v1)
+	}
+
+	// 批量更新account_common
 
 }
