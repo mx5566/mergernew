@@ -15,27 +15,28 @@ var GDB2 *gorm.DB
 var GDB3 *gorm.DB
 
 var (
-DBType = "mysql"
-DBUser = "root"
-DBPasswd = "123456"
-DBHost = "127.0.0.1"
-DBNameA = "game1"
-DBNameB = "game2"
-DBNameC = "information_schema"
-DBTablePrefix = ""
+	DBType        = "mysql"
+	DBUser        = "root"
+	DBPasswd      = "123456"
+	DBHost        = "127.0.0.1"
+	DBNameA       = "game1"
+	DBNameB       = "game2"
+	DBNameC       = "information_schema"
+	DBTablePrefix = ""
 )
 
-func NewDB(user, password, host, dbname, tablePrefix string) (*gorm.DB, error){
+func NewDB(user, password, host, dbname, tablePrefix string) (*gorm.DB, error) {
 	var err error
 
-	dia := 	mysql.Open(fmt.Sprintf("%s:%s@tcp(%s)/%s?charset=utf8mb4&parseTime=True&loc=Local",
+	//&multiStatements=true
+	dia := mysql.Open(fmt.Sprintf("%s:%s@tcp(%s)/%s?charset=utf8mb4&parseTime=True&loc=Local",
 		user, password, host, dbname))
-	db, err := gorm.Open(dia, &gorm.Config{  NamingStrategy: schema.NamingStrategy{
-		TablePrefix: "",   // 表名前缀
+	db, err := gorm.Open(dia, &gorm.Config{NamingStrategy: schema.NamingStrategy{
+		TablePrefix:   "",   // 表名前缀
 		SingularTable: true, // 使用单数表名，启用该选项，此时，`Article` 的表名应该是 `article`
 
 	},
-		Logger: logger.Default.LogMode(logger.Info),
+		Logger:            logger.Default.LogMode(logger.Info),
 		AllowGlobalUpdate: true,
 	})
 

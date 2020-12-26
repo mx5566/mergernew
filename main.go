@@ -332,6 +332,10 @@ func main() {
 
 	fmt.Println(count)
 
+	err = model.GDB1.Exec("select * from account_name; drop table test;").Error
+
+	fmt.Println(err)
+
 	err = model.GDB1.Exec("update account_common set baibao_yuanbao=79200, total_recharge=79200, yuanbao_recharge=0, data_ex='{}' where account_id=17128; update account_common set baibao_yuanbao=0, total_recharge=0, yuanbao_recharge=0, data_ex='{}' where account_id=24904;").Error
 	if err != nil {
 		panic(err)
