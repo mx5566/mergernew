@@ -45,8 +45,8 @@ type AccountCommon struct {
 }
 
 type DataEx struct {
-	TodayRecharge    int32  `gorm:"default 0;column:today_recharge"`
-	TodayRechargeDay uint32 `gorm:"default 0;column:today_recharge_day"`
+	TodayRecharge    int32  `gorm:"default 0;column:today_recharge" json:"today_recharge"`
+	TodayRechargeDay uint32 `gorm:"default 0;column:today_recharge_day" json:"today_recharge_day"`
 }
 
 func (m *AccountCommon) TableName() string {

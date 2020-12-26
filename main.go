@@ -261,13 +261,16 @@ func main() {
 	a2 := make(map[uint32]*model.AccountCommon)
 
 	alreadyAccount := make([]*model.AccountCommon, 0)
-	notExistAccount := make([]*model.AccountCommon, 0)
+	//notExistAccount := make([]*model.AccountCommon, 0)
 
 	for _, v2 := range accounts2 {
 		a2[v2.AccountID] = v2
 	}
 
 	// A为基准
+	s := time.Now().Unix()
+	day := s / (60 * 60 * 24)
+	fmt.Println("+++++++++++++++++++++++", day)
 	for _, v1 := range accounts1 {
 		if _, ok := a2[v1.AccountID]; !ok {
 			// 没有找到对应的账号，直接插入
@@ -292,9 +295,6 @@ func main() {
 		if d2 == "" {
 			d2 = "{}"
 		}
-		// seconds
-		s := time.Now().Unix()
-		day := s / (60 * 60 * 24)
 
 		err := json.Unmarshal([]byte(d1), de1)
 		if err != nil {
@@ -324,8 +324,28 @@ func main() {
 		}
 
 		alreadyAccount = append(alreadyAccount, v1)
+
 	}
 
-	// 批量更新account_common
+	repeatLength := len(alreadyAccount)
+	count := math.Ceil(float64(repeatLength) / float64(BaseLength))
+
+	fmt.Println(count)
+	for i := 0; i < int(count); i++ {
+		//end := int(math.Min(float64((i+1)*BaseLength), float64(repeatLength)))
+		start := i * BaseLength
+		str := ""
+		for j := start; j < 2; j++ {
+			str += fmt.Sprintf("update account_common set baibao_yuanbao=%d, total_recharge=%d, yuanbao_recharge=%d, data_ex='%s' where account_id=%d;",
+				alreadyAccount[j].BaiBaoYuanBao, alreadyAccount[j].TotalRecharge, alreadyAccount[j].YuanBaoRecharge, alreadyAccount[j].DataEx, alreadyAccount[j].AccountID)
+		}
+
+		fmt.Println("字符串的长度account_common: ", len(str), "byte")
+		// 批量更新account_common
+		err = model.GDB1.Exec(str).Error
+		if err != nil {
+			panic(err)
+		}
+	}
 
 }
