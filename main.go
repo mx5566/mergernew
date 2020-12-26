@@ -331,6 +331,12 @@ func main() {
 	count := math.Ceil(float64(repeatLength) / float64(BaseLength))
 
 	fmt.Println(count)
+
+	err = model.GDB1.Exec("update account_common set baibao_yuanbao=79200, total_recharge=79200, yuanbao_recharge=0, data_ex='{}' where account_id=17128; update account_common set baibao_yuanbao=0, total_recharge=0, yuanbao_recharge=0, data_ex='{}' where account_id=24904;").Error
+	if err != nil {
+		panic(err)
+	}
+
 	for i := 0; i < int(count); i++ {
 		//end := int(math.Min(float64((i+1)*BaseLength), float64(repeatLength)))
 		start := i * BaseLength
