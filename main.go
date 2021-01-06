@@ -10,8 +10,6 @@ import (
 	"time"
 )
 
-const BaseLength = 10000
-
 func main() {
 	model.GDB1, _ = model.NewDB(model.DBUser, model.DBPasswd, model.DBHost, model.DBNameA, model.DBTablePrefix)
 	model.GDB2, _ = model.NewDB(model.DBUser, model.DBPasswd, model.DBHost, model.DBNameB, model.DBTablePrefix)
@@ -92,13 +90,6 @@ func main() {
 	}
 
 	//model.GDB2.Begin() 好像加了事务还慢了
-	length := len(itemIDs)
-
-	a := float64(length) / float64(BaseLength)
-
-	l1 := math.Ceil(a)
-
-	fmt.Println(l1)
 	model.GDB2.Begin()
 	err = model.GDB2.Table("item").Where("container_type_id != ?", 11).Updates(map[string]interface{}{"owner_id": gorm.Expr("owner_id + ?", increaseNum)}).Error
 	if err != nil {
@@ -259,32 +250,43 @@ func main() {
 
 	// 把相同account_id的账号的数据充值元宝合并 data_ex 是个json串需要单独处理
 	a2 := make(map[uint32]*model.AccountCommon)
+	a1 := make(map[uint32]*model.AccountCommon)
 
 	alreadyAccount := make([]*model.AccountCommon, 0)
-	//notExistAccount := make([]*model.AccountCommon, 0)
+	notExistAccount := make([]*model.AccountCommon, 0)
 
 	for _, v2 := range accounts2 {
 		a2[v2.AccountID] = v2
+	}
+
+	for _, v1 := range accounts1 {
+		a1[v1.AccountID] = v1
 	}
 
 	// A为基准
 	s := time.Now().Unix()
 	day := s / (60 * 60 * 24)
 	fmt.Println("+++++++++++++++++++++++", day)
-	for _, v1 := range accounts1 {
-		if _, ok := a2[v1.AccountID]; !ok {
+	for _, v2 := range accounts2 {
+		if _, ok := a1[v2.AccountID]; !ok {
 			// 没有找到对应的账号，直接插入
+			if v2.DataEx == "" {
+				v2.DataEx = "{}"
+			}
+			notExistAccount = append(notExistAccount, v2)
 			continue
 		}
 
+		data := a1[v2.AccountID]
+
 		// 找到对应的数据，数据叠加
-		v1.BaiBaoYuanBao += a2[v1.AccountID].BaiBaoYuanBao
-		v1.TotalRecharge += a2[v1.AccountID].TotalRecharge
-		v1.YuanBaoRecharge += a2[v1.AccountID].YuanBaoRecharge
+		v2.BaiBaoYuanBao += data.BaiBaoYuanBao
+		v2.TotalRecharge += data.TotalRecharge
+		v2.YuanBaoRecharge += data.YuanBaoRecharge
 
 		// 修改data_ex字段
-		d1 := v1.DataEx
-		d2 := a2[v1.AccountID].DataEx
+		d1 := v2.DataEx
+		d2 := data.DataEx
 		de1 := new(model.DataEx)
 		de2 := new(model.DataEx)
 
@@ -318,44 +320,32 @@ func main() {
 			if err != nil {
 				panic(err)
 			}
-			v1.DataEx = string(by)
+			v2.DataEx = string(by)
 		} else {
-			v1.DataEx = "{}"
+			v2.DataEx = "{}"
 		}
 
-		alreadyAccount = append(alreadyAccount, v1)
+		alreadyAccount = append(alreadyAccount, v2)
 
 	}
 
 	repeatLength := len(alreadyAccount)
-	count := math.Ceil(float64(repeatLength) / float64(BaseLength))
+	count := math.Ceil(float64(repeatLength) / float64(model.BaseLength))
 
 	fmt.Println(count)
 
-	err = model.GDB1.Exec("select * from account_name; drop table test;").Error
-
-	fmt.Println(err)
-
-	err = model.GDB1.Exec("update account_common set baibao_yuanbao=79200, total_recharge=79200, yuanbao_recharge=0, data_ex='{}' where account_id=17128; update account_common set baibao_yuanbao=0, total_recharge=0, yuanbao_recharge=0, data_ex='{}' where account_id=24904;").Error
+	// 对于存在的账号数据叠加
+	err = model.BatchUpdate(model.GDB1, model.Ac, alreadyAccount)
 	if err != nil {
 		panic(err)
 	}
 
-	for i := 0; i < int(count); i++ {
-		//end := int(math.Min(float64((i+1)*BaseLength), float64(repeatLength)))
-		start := i * BaseLength
-		str := ""
-		for j := start; j < 2; j++ {
-			str += fmt.Sprintf("update account_common set baibao_yuanbao=%d, total_recharge=%d, yuanbao_recharge=%d, data_ex='%s' where account_id=%d;",
-				alreadyAccount[j].BaiBaoYuanBao, alreadyAccount[j].TotalRecharge, alreadyAccount[j].YuanBaoRecharge, alreadyAccount[j].DataEx, alreadyAccount[j].AccountID)
-		}
-
-		fmt.Println("字符串的长度account_common: ", len(str), "byte")
-		// 批量更新account_common
-		err = model.GDB1.Exec(str).Error
-		if err != nil {
-			panic(err)
-		}
+	// 不存在的数据批量插入
+	err = model.BatchSave(model.GDB1, model.Ac, notExistAccount)
+	if err != nil {
+		panic(err)
 	}
 
+	// handle mail
+	err = model.HandleMail(model.GDB1, model.GDB2)
 }

@@ -1,6 +1,6 @@
 package model
 
-import "github.com/jinzhu/gorm"
+import "gorm.io/gorm"
 
 /*
   `serial` bigint NOT NULL AUTO_INCREMENT,

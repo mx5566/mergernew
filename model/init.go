@@ -29,7 +29,7 @@ func NewDB(user, password, host, dbname, tablePrefix string) (*gorm.DB, error) {
 	var err error
 
 	//&multiStatements=true
-	dia := mysql.Open(fmt.Sprintf("%s:%s@tcp(%s)/%s?charset=utf8mb4&parseTime=True&loc=Local",
+	dia := mysql.Open(fmt.Sprintf("%s:%s@tcp(%s)/%s?charset=utf8mb4&parseTime=True&loc=Local&multiStatements=true",
 		user, password, host, dbname))
 	db, err := gorm.Open(dia, &gorm.Config{NamingStrategy: schema.NamingStrategy{
 		TablePrefix:   "",   // 表名前缀
