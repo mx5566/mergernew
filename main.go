@@ -11,6 +11,9 @@ import (
 )
 
 func main() {
+
+	t1 := time.Now().Unix()
+
 	model.GDB1, _ = model.NewDB(model.DBUser, model.DBPasswd, model.DBHost, model.DBNameA, model.DBTablePrefix)
 	model.GDB2, _ = model.NewDB(model.DBUser, model.DBPasswd, model.DBHost, model.DBNameB, model.DBTablePrefix)
 	model.GDB3, _ = model.NewDB(model.DBUser, model.DBPasswd, model.DBHost, model.DBNameC, model.DBTablePrefix)
@@ -64,22 +67,26 @@ func main() {
 
 	model.GDB3.Table("COLUMNS").Select("table_name as table_name").Where("TABLE_SCHEMA=? and COLUMN_NAME= ?", model.DBNameB, "role_id").Find(&tableRoleID)
 
-	fmt.Println(tableRoleID)
+	//fmt.Println(tableRoleID)
 
 	// 更新所有上面有role_id的表
-	/*for _, table := range tableRoleID {
+	for _, table := range tableRoleID {
 		model.GDB2.Table(table.TableName).Update("role_id", gorm.Expr("role_id + ?", increaseNum))
-	}*/
+	}
 
-	//把B表里面所有角色ID需要修改的也增加increaseNum
-	err = model.GDB2.Exec("ALTER TABLE `item` ADD INDEX temp_item_o_c (`create_mode`) ").Error
-	// model.GDB2.Migrator().CreateIndex()
-
+	// 用来测试时间
+	// 不利用主键去count 利用第二索引去count
+	var c1 int64 = 0
+	err = model.GDB2.Table("item").Select("count(container_type_id) as count").Where("container_type_id > ?", 0).Count(&c1).Error
 	if err != nil {
 		panic(err)
 	}
 
-	type ItemIDs struct {
+	fmt.Println("最大个数 ", c1)
+
+	//把B表里面所有角色ID需要修改的也增加increaseNum
+
+	/*type ItemIDs struct {
 		ID int64 `gorm:"column:serial"`
 	}
 
@@ -87,31 +94,63 @@ func main() {
 	err = model.GDB2.Table("item").Select("serial as serial").Find(&itemIDs).Error
 	if err != nil {
 		panic(err)
-	}
+	}*/
 
+	/////////////////////
+	// owner_id	owner_id	NORMAL	0	A	40			0
 	//model.GDB2.Begin() 好像加了事务还慢了
-	model.GDB2.Begin()
-	err = model.GDB2.Table("item").Where("container_type_id != ?", 11).Updates(map[string]interface{}{"owner_id": gorm.Expr("owner_id + ?", increaseNum)}).Error
+	//model.GDB2.Begin()
+	//移除索引
+	/*err = model.GDB2.Exec("ALTER TABLE item DROP INDEX owner_id ;").Error
 	if err != nil {
-		model.GDB2.Rollback()
+		panic(err)
+	}*/
+
+	/*err = model.GDB2.Table("item").Where("container_type_id in ?", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 13, 14, 15, 16}).Updates(map[string]interface{}{"owner_id": gorm.Expr("owner_id + ?", increaseNum)}).Error
+	if err != nil {
+		//model.GDB2.Rollback()
+		panic(err)
+	}*/
+
+	err = model.HandleItemOwnerId(model.GDB1, model.GDB2, increaseNum)
+	if err != nil {
 		panic(err)
 	}
-	model.GDB2.Commit()
+
+	//model.GDB2.Commit()
+
+	// 添加索引
+	/*err = model.GDB2.Exec("ALTER TABLE `item` ADD INDEX owner_id (`owner_id`) ").Error
+	if err != nil {
+		//model.GDB2.Rollback()
+		panic(err)
+	}*/
+
+	/////////////////////
+
+	/////////////////////
 
 	// 所有mode为8的更新increaseNum
-	model.GDB2.Begin()
-	err = model.GDB2.Table("item").Where("create_mode = ?", 8).Updates(map[string]interface{}{"create_id": gorm.Expr("create_id + ?", increaseNum)}).Error
+	//model.GDB2.Begin()
+	err = model.GDB2.Exec("ALTER TABLE `item` ADD INDEX temp_item_o_c (`create_mode`) ").Error
 	if err != nil {
-		model.GDB2.Rollback()
+		//model.GDB2.Rollback()
 		panic(err)
 	}
-	model.GDB2.Commit()
+
+	err = model.GDB2.Table("item").Where("create_mode = ?", 8).Updates(map[string]interface{}{"create_id": gorm.Expr("create_id + ?", increaseNum)}).Error
+	if err != nil {
+		//model.GDB2.Rollback()
+		panic(err)
+	}
+	//model.GDB2.Commit()
 
 	//移除索引
 	err = model.GDB2.Exec("alter table item drop index temp_item_o_c ;").Error
 	if err != nil {
 		panic(err)
 	}
+	/////////////////////
 
 	/*
 		UPDATE guild_hebin_copy SET creater_name_id=creater_name_id+increase_num;
@@ -348,4 +387,17 @@ func main() {
 
 	// handle mail
 	err = model.HandleMail(model.GDB1, model.GDB2)
+	if err != nil {
+		panic(err)
+	}
+
+	// add 2 item to 1
+	// 把合并的物品数据插入到北河数据库物品表
+	/*err = model.HandleItem(model.GDB1, model.GDB2)
+	if err != nil {
+		fmt.Println(err)
+		//panic(err)
+	}*/
+
+	fmt.Println("消耗的时间", time.Now().Unix()-t1)
 }

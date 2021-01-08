@@ -1,6 +1,8 @@
 package model
 
-import "gorm.io/gorm"
+import (
+	"gorm.io/gorm"
+)
 
 /*
   `serial` bigint NOT NULL AUTO_INCREMENT,
@@ -42,7 +44,7 @@ type Item struct {
 	CreatorID       uint32 `gorm:"column:creator_id"`
 	CreateTime      string `gorm:"char(20);column:create_time"`
 	OwnerID         uint32 `gorm:"column:owner_id"`
-	AccountID       uint32 `gorm:"column:account_id:"`
+	AccountID       uint32 `gorm:"column:account_id"`
 	ContainerTypeID uint8  `gorm:"column:container_type_id"`
 	Suffix          uint8  `gorm:"column:suffix"`
 	NameID          uint32 `gorm:"default:4294967295;column:name_id"`
@@ -59,23 +61,64 @@ func (m *Item) TableName() string {
 	return "item"
 }
 
-func (m *Item) Query(gdb *gorm.DB, where ...interface{}) []Item {
-	var items []Item
-	gdb.Find(&items, where)
-	return items
-}
+func HandleItem(db1, db2 *gorm.DB) error {
 
-func (m *Item) Read(gdb *gorm.DB, fields ...string) (items []Item, err error) {
-	if len(fields) == 0 {
-		err = gdb.Find(&items).Error
-		return
+	err := db1.Exec("ALTER TABLE item MODIFY serial BIGINT(21)  AUTO_INCREMENT;").Error
+	if err != nil {
+		return err
 	}
 
-	err = gdb.Select(fields).Find(&items).Error
-	return
+	var MAXItemID int64
+	type MaxStruct struct {
+		Max int64 `json:"max"`
+		Min int64 `json:"min"`
+	}
+	var result MaxStruct
+	err = db1.Raw("select max(serial) as max from item;").Scan(&result).Error
+	if err != nil {
+		return err
+	}
+	MAXItemID = result.Max
+	if MAXItemID == 0 {
+		err = db1.Exec("ALTER TABLE item auto_increment=500000000000;").Error
+		if err != nil {
+			return err
+		}
+	}
+
+	var items []*Item
+	err = db2.Select("num, type_id, bind, lock_state, use_times, first_gain_time, create_mode, create_id, creator_id, create_time, owner_id, account_id, container_type_id, suffix, name_id, bind_time, script_data1, script_data2, create_bind, strdwExternData, item_old, source").Find(&items).Error
+	if err != nil {
+		return err
+	}
+
+	// 批量插入被合数据库表item
+	err = BatchSave(db1, ItemC, items)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
-func (m *Item) GetCount(gdb *gorm.DB) (count int64) {
-	gdb.Table(m.TableName()).Count(&count)
-	return
+type Item1 struct {
+	Serial int64 `gorm:"primary_key;AUTO_INCREMENT;column:serial"`
+}
+
+func HandleItemOwnerId(db1, db2 *gorm.DB, count uint32) error {
+	// 查找所有container_type_id != 11的物品
+	// select  owner_id from item where serial > 0 and container_type_id != 11
+	var items []*Item1
+	err := db2.Table("item").Where("serial > 0 and container_type_id != 11").Select("serial").Find(&items).Error
+	if err != nil {
+		return err
+	}
+
+	// 批量更新owner_id的值
+	err = BatchUpdate(db2, ItemOwnerID, items, map[string]interface{}{"count": count})
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

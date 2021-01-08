@@ -33,7 +33,7 @@ func HandleMail(db1, db2 *gorm.DB) error {
 	}
 
 	// update mail_hebin_copy set mail_id = mail_id + increase_num;
-	err = db2.Table("mail").Update("mail_id", gorm.Expr("mail_id + ？", increaseNum)).Error
+	err = db2.Table("mail").Update("mail_id", gorm.Expr("mail_id + ?", increaseNum)).Error
 	if err != nil {
 		return err
 	}

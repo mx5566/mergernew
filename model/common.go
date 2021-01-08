@@ -5,12 +5,16 @@ import (
 	"fmt"
 	"gorm.io/gorm"
 	"math"
+	"sync"
 )
 
-const BaseLength = 10000
+const BaseLength = 1000
+const BaseLength1000 = 100
 
 const (
 	Ac = iota + 1
+	ItemC
+	ItemOwnerID
 )
 
 // BatchSave 批量插入数据
@@ -48,12 +52,20 @@ func BatchSave(db *gorm.DB, t int, arr interface{}) error {
 				return err
 			}
 		}
+	case ItemC:
+		items := arr.([]*Item)
+
+		err := db.Session(&gorm.Session{PrepareStmt: false, CreateBatchSize: 100}).Create(items).Error
+		if err != nil {
+			return err
+		}
+
 	}
 
 	return nil
 }
 
-func BatchUpdate(db *gorm.DB, t int, arr interface{}) error {
+func BatchUpdate(db *gorm.DB, t int, arr interface{}, args ...map[string]interface{}) error {
 	switch t {
 	case Ac:
 		alreadyAccount := arr.([]*AccountCommon)
@@ -82,6 +94,62 @@ func BatchUpdate(db *gorm.DB, t int, arr interface{}) error {
 				return err
 			}
 		}
+	case ItemOwnerID:
+		items := arr.([]*Item1)
+
+		c, _ := args[0]["count"]
+
+		//var buffer bytes.Buffer
+
+		repeatLength := len(items)
+		count := math.Ceil(float64(repeatLength) / float64(BaseLength))
+
+		var wg sync.WaitGroup
+		wg.Add(int(count))
+		// 对于存在的账号数据叠加
+		for i := 0; i < int(count); i++ {
+			go func(n int) {
+				var buf bytes.Buffer
+
+				// Add(-1)
+				defer wg.Done()
+
+				buf.Reset()
+
+				end := int(math.Min(float64((n+1)*BaseLength), float64(repeatLength)))
+				start := n * BaseLength
+				for j := start; j < end; j++ {
+					buf.WriteString(fmt.Sprintf("update item set owner_id = owner_id + %d where serial = %d;", c, items[j].Serial))
+				}
+
+				str := buf.String()
+				fmt.Println("批量更新 字节长度 item(owner_id): ", len(str), "byte")
+				// 批量更新account_common
+				err := db.Exec(str).Error
+				if err != nil {
+					return
+				}
+			}(i)
+
+			//
+			/*buffer.Reset()
+
+			end := int(math.Min(float64((i+1)*BaseLength), float64(repeatLength)))
+			start := i * BaseLength
+			for j := start; j < end; j++ {
+				buffer.WriteString(fmt.Sprintf("update item set owner_id = owner_id + %d where serial = %d;", c, items[j].Serial))
+			}
+
+			str := buffer.String()
+			fmt.Println("批量更新 字节长度 item(owner_id): ", len(str), "byte")
+			// 批量更新account_common
+			err := db.Exec(str).Error
+			if err != nil {
+				return err
+			}*/
+		}
+
+		wg.Wait()
 	}
 
 	return nil
