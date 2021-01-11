@@ -111,7 +111,6 @@ func BatchUpdate(db *gorm.DB, t int, arr interface{}, args ...map[string]interfa
 			go func(n int) {
 				var buf bytes.Buffer
 
-				// Add(-1)
 				defer wg.Done()
 
 				buf.Reset()
@@ -129,6 +128,7 @@ func BatchUpdate(db *gorm.DB, t int, arr interface{}, args ...map[string]interfa
 				if err != nil {
 					return
 				}
+
 			}(i)
 
 			//

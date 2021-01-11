@@ -112,10 +112,22 @@ func main() {
 		panic(err)
 	}*/
 
+	// 删除索引
+	// 删除物品表里面的两个索引 提升update的性能
+	//err = model.GDB2.Exec("alter table item drop index account_id; alter table item drop index container_type_id;alter table item drop index owner_id;").Error
+	//if err != nil {
+	//	panic(err)
+	//}
+
 	err = model.HandleItemOwnerId(model.GDB1, model.GDB2, increaseNum)
 	if err != nil {
 		panic(err)
 	}
+
+	// 增加删除的索引
+	//err = model.GDB2.Exec("alter table item add index account_id (account_id, container_type_id);" +
+	/*"alter table item add index container_type_id (`container_type_id`);"*/
+	//	"alter table item add index owner_id (`owner_id`);").Error
 
 	//model.GDB2.Commit()
 
