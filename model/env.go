@@ -23,4 +23,5 @@ func SetEnv() {
 	GDB2.Exec("set GLOBAL max_connections=1000;")
 	GDB2.Exec("set global innodb_thread_concurrency=32;")
 
+	//runtime.GOMAXPROCS(runtime.NumCPU())
 }

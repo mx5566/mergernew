@@ -2,6 +2,7 @@ package model
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"gorm.io/gorm"
 	"math"
@@ -99,58 +100,98 @@ func BatchUpdate(db *gorm.DB, t int, arr interface{}, args ...map[string]interfa
 
 		c, _ := args[0]["count"]
 
-		//var buffer bytes.Buffer
-
 		repeatLength := len(items)
 		count := math.Ceil(float64(repeatLength) / float64(BaseLength))
 
 		var wg sync.WaitGroup
 		wg.Add(int(count))
+
+		ctx, cancel := context.WithCancel(context.Background())
+
+		/*pool := pool2.NewPool(runtime.NumCPU())
+		for i := 0; i < int(count); i++ {
+			args := []interface{}{i, wg, repeatLength, db, ctx, cancel}
+			ta := pool2.NewTask(Test, args)
+
+			pool.EntryChannel <- ta
+		}*/
+
 		// 对于存在的账号数据叠加
 		for i := 0; i < int(count); i++ {
-			go func(n int) {
-				var buf bytes.Buffer
+			go func(n int, con context.Context) {
+				select {
+				default:
+					var buf bytes.Buffer
 
-				defer wg.Done()
+					defer wg.Done()
+					buf.Reset()
 
-				buf.Reset()
+					end := int(math.Min(float64((n+1)*BaseLength), float64(repeatLength)))
+					start := n * BaseLength
+					for j := start; j < end; j++ {
+						buf.WriteString(fmt.Sprintf("update item set owner_id = owner_id + %d where serial = %d;", c, items[j].Serial))
+					}
 
-				end := int(math.Min(float64((n+1)*BaseLength), float64(repeatLength)))
-				start := n * BaseLength
-				for j := start; j < end; j++ {
-					buf.WriteString(fmt.Sprintf("update item set owner_id = owner_id + %d where serial = %d;", c, items[j].Serial))
+					str := buf.String()
+					fmt.Println("批量更新 字节长度 item(owner_id): ", len(str), "byte")
+					// 批量更新account_common
+					err := db.WithContext(con).Exec(str).Error
+
+					if err != nil {
+						fmt.Println("err == nil")
+						cancel()
+						return
+					}
 				}
-
-				str := buf.String()
-				fmt.Println("批量更新 字节长度 item(owner_id): ", len(str), "byte")
-				// 批量更新account_common
-				err := db.Exec(str).Error
-				if err != nil {
-					return
-				}
-
-			}(i)
-
-			//
-			/*buffer.Reset()
-
-			end := int(math.Min(float64((i+1)*BaseLength), float64(repeatLength)))
-			start := i * BaseLength
-			for j := start; j < end; j++ {
-				buffer.WriteString(fmt.Sprintf("update item set owner_id = owner_id + %d where serial = %d;", c, items[j].Serial))
-			}
-
-			str := buffer.String()
-			fmt.Println("批量更新 字节长度 item(owner_id): ", len(str), "byte")
-			// 批量更新account_common
-			err := db.Exec(str).Error
-			if err != nil {
-				return err
-			}*/
+			}(i, ctx)
 		}
 
+		// 同步等待所有的协程结束
 		wg.Wait()
+
+		select {
+		// 出现错误直接返回
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+		}
 	}
 
 	return nil
 }
+
+/*
+func Test(args ...interface{}) error {
+	select {
+	default:
+		n := args[0].(int)
+		wg := args[1].(sync.WaitGroup)
+		repeatLength := args[2].(int)
+		db := args[3].(*gorm.DB)
+		con := args[4].(context.Context)
+		cancel := args[5].(context.CancelFunc)
+
+		var buf bytes.Buffer
+
+		defer wg.Done()
+		buf.Reset()
+
+		end := int(math.Min(float64((n+1)*BaseLength), float64(repeatLength)))
+		start := n * BaseLength
+		for j := start; j < end; j++ {
+			buf.WriteString(fmt.Sprintf("update item set owner_id = owner_id + %d where serial = %d;", c, items[j].Serial))
+		}
+
+		str := buf.String()
+		fmt.Println("批量更新 字节长度 item(owner_id): ", len(str), "byte")
+		// 批量更新account_common
+		err := db.WithContext(con).Exec(str).Error
+
+		if err != nil {
+			fmt.Println("err == nil")
+			cancel()
+			return err
+		}
+	}
+	return nil
+}*/

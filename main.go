@@ -1,12 +1,11 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
+	"github.com/mx5566/logm"
 	"github.com/mx5566/mergernew/model"
 	_ "gorm.io/driver/mysql"
 	"gorm.io/gorm"
-	"math"
 	"time"
 )
 
@@ -19,6 +18,7 @@ func main() {
 	model.GDB3, _ = model.NewDB(model.DBUser, model.DBPasswd, model.DBHost, model.DBNameC, model.DBTablePrefix)
 
 	model.SetEnv()
+	logm.Init("mergernew", map[string]string{"errFile": "game_err.log", "logFile": "game.log"}, "debug")
 
 	// 远程的数据库数据，合并过来的数据库
 	var MinRoleCID uint32
@@ -114,15 +114,28 @@ func main() {
 
 	// 删除索引
 	// 删除物品表里面的两个索引 提升update的性能
+	//err = model.GDB2.Exec("alter table item drop index account_id; alter table item drop index owner_id;").Error
 	//err = model.GDB2.Exec("alter table item drop index account_id; alter table item drop index container_type_id;alter table item drop index owner_id;").Error
 	//if err != nil {
 	//	panic(err)
 	//}
 
-	err = model.HandleItemOwnerId(model.GDB1, model.GDB2, increaseNum)
+	// handle mail 先处理掉
+	err = model.HandleMail(model.GDB1, model.GDB2)
 	if err != nil {
 		panic(err)
 	}
+
+	// handle item relative
+	err = model.HandleItemRelation(model.GDB1, model.GDB2, increaseNum)
+	if err != nil {
+		panic(err)
+	}
+
+	//err = model.HandleItemOwnerId(model.GDB1, model.GDB2, increaseNum)
+	//if err != nil {
+	//	panic(err)
+	//}
 
 	// 增加删除的索引
 	//err = model.GDB2.Exec("alter table item add index account_id (account_id, container_type_id);" +
@@ -130,13 +143,6 @@ func main() {
 	//	"alter table item add index owner_id (`owner_id`);").Error
 
 	//model.GDB2.Commit()
-
-	// 添加索引
-	/*err = model.GDB2.Exec("ALTER TABLE `item` ADD INDEX owner_id (`owner_id`) ").Error
-	if err != nil {
-		//model.GDB2.Rollback()
-		panic(err)
-	}*/
 
 	/////////////////////
 
@@ -220,196 +226,24 @@ func main() {
 		panic(err)
 	}
 
-	// 修改role_name_origin字段
-	var target_database = model.GDB1.Migrator().CurrentDatabase()
-	var target_database_copy = model.GDB2.Migrator().CurrentDatabase()
-
-	var target_table_name = "role_data"
-	var target_table_name_copy = "role_data"
-	var column_name = "role_name_origin"
-
-	/*
-			select count(*) into @cnt1 FROM information_schema.columns WHERE table_schema = target_database AND table_name = target_table_name AND column_name = target_column_name;
-		if @cnt1 = 0 then
-				set @st1 = CONCAT('ALTER TABLE ', target_table_name, ' ADD COLUMN ', target_column_name, ' VARCHAR(32) default NULL');
-				PREPARE STMT1 FROM @st1;
-				EXECUTE STMT1;
-				DEALLOCATE PREPARE STMT1;
-		end if;
-
-		select count(*) into @cnt2 FROM information_schema.columns WHERE table_schema = target_database AND table_name = target_table_name_copy AND column_name = target_column_name;
-		if @cnt2 = 0 then
-				set @st2 = CONCAT('ALTER TABLE ', target_table_name_copy, ' ADD COLUMN ', target_column_name, ' VARCHAR(32) default NULL');
-				PREPARE STMT2 FROM @st2;
-				EXECUTE STMT2;
-				DEALLOCATE PREPARE STMT2;
-		end if;
-
-
-	*/
-
-	var c int64 = 0
-
-	// 计算个数
-	err = model.GDB3.Table("columns").Where("table_schema = ? and table_name = ? and column_name = ?", target_database, target_table_name, column_name).Select("count(*) as count").Count(&c).Error
-	if err != nil {
-		panic(err)
-	}
-	if c == 0 {
-		err = model.GDB1.Exec(fmt.Sprintf("ALTER TABLE %s ADD COLUMN %s VARCHAR(32) default NULL;", target_table_name, column_name)).Error
-		if err != nil {
-			panic(err)
-		}
-	}
-
-	err = model.GDB3.Table("columns").Where("table_schema = ? and table_name = ? and column_name = ?", target_database_copy, target_table_name_copy, column_name).Select("count(*) as count").Count(&c).Error
-	if err != nil {
-		panic(err)
-	}
-	if c == 0 {
-		err = model.GDB2.Exec(fmt.Sprintf("ALTER TABLE %s ADD COLUMN %s VARCHAR(32) default NULL;", target_table_name_copy, column_name)).Error
-		if err != nil {
-			panic(err)
-		}
-	}
-
-	// 更新两个role_data表
-	err = model.GDB1.Exec("update role_data set role_name_origin = role_name where ISNULL(role_name_origin);").Error
+	err = model.HandleRoleNameOrigin(model.GDB1, model.GDB2, model.GDB3)
 	if err != nil {
 		panic(err)
 	}
 
-	err = model.GDB2.Exec("update role_data set role_name_origin = role_name where ISNULL(role_name_origin);").Error
-	if err != nil {
-		panic(err)
-	}
-
-	// 处理account_common表
-	var accounts1 []*model.AccountCommon
-	err = model.GDB1.Select("account_id, baibao_yuanbao, total_recharge, yuanbao_recharge, data_ex").Find(&accounts1).Error
-	//
-	if err != nil {
-		panic(err)
-	}
-
-	var accounts2 []*model.AccountCommon
-	err = model.GDB2.Find(&accounts2).Error
-	//
-	if err != nil {
-		panic(err)
-	}
-
-	// 把相同account_id的账号的数据充值元宝合并 data_ex 是个json串需要单独处理
-	a2 := make(map[uint32]*model.AccountCommon)
-	a1 := make(map[uint32]*model.AccountCommon)
-
-	alreadyAccount := make([]*model.AccountCommon, 0)
-	notExistAccount := make([]*model.AccountCommon, 0)
-
-	for _, v2 := range accounts2 {
-		a2[v2.AccountID] = v2
-	}
-
-	for _, v1 := range accounts1 {
-		a1[v1.AccountID] = v1
-	}
-
-	// A为基准
-	s := time.Now().Unix()
-	day := s / (60 * 60 * 24)
-	fmt.Println("+++++++++++++++++++++++", day)
-	for _, v2 := range accounts2 {
-		if _, ok := a1[v2.AccountID]; !ok {
-			// 没有找到对应的账号，直接插入
-			if v2.DataEx == "" {
-				v2.DataEx = "{}"
-			}
-			notExistAccount = append(notExistAccount, v2)
-			continue
-		}
-
-		data := a1[v2.AccountID]
-
-		// 找到对应的数据，数据叠加
-		v2.BaiBaoYuanBao += data.BaiBaoYuanBao
-		v2.TotalRecharge += data.TotalRecharge
-		v2.YuanBaoRecharge += data.YuanBaoRecharge
-
-		// 修改data_ex字段
-		d1 := v2.DataEx
-		d2 := data.DataEx
-		de1 := new(model.DataEx)
-		de2 := new(model.DataEx)
-
-		if d1 == "" {
-			d1 = "{}"
-		}
-
-		if d2 == "" {
-			d2 = "{}"
-		}
-
-		err := json.Unmarshal([]byte(d1), de1)
-		if err != nil {
-			panic(err)
-		}
-
-		err = json.Unmarshal([]byte(d2), de2)
-		if err != nil {
-			panic(err)
-		}
-
-		if day == int64(de1.TodayRechargeDay) && day == int64(de2.TodayRechargeDay) {
-			de1.TodayRecharge += de2.TodayRecharge
-		} else if day == int64(de2.TodayRechargeDay) {
-			de1.TodayRecharge = de2.TodayRecharge
-			de1.TodayRechargeDay = de2.TodayRechargeDay
-		}
-
-		if de1.TodayRechargeDay != 0 {
-			by, err := json.Marshal(&de1)
-			if err != nil {
-				panic(err)
-			}
-			v2.DataEx = string(by)
-		} else {
-			v2.DataEx = "{}"
-		}
-
-		alreadyAccount = append(alreadyAccount, v2)
-
-	}
-
-	repeatLength := len(alreadyAccount)
-	count := math.Ceil(float64(repeatLength) / float64(model.BaseLength))
-
-	fmt.Println(count)
-
-	// 对于存在的账号数据叠加
-	err = model.BatchUpdate(model.GDB1, model.Ac, alreadyAccount)
-	if err != nil {
-		panic(err)
-	}
-
-	// 不存在的数据批量插入
-	err = model.BatchSave(model.GDB1, model.Ac, notExistAccount)
-	if err != nil {
-		panic(err)
-	}
-
-	// handle mail
-	err = model.HandleMail(model.GDB1, model.GDB2)
+	// handle account_common
+	err = model.HandleAccountCommon(model.GDB1, model.GDB2)
 	if err != nil {
 		panic(err)
 	}
 
 	// add 2 item to 1
-	// 把合并的物品数据插入到北河数据库物品表
-	/*err = model.HandleItem(model.GDB1, model.GDB2)
-	if err != nil {
-		fmt.Println(err)
-		//panic(err)
-	}*/
+	// 把合并的物品数据插入到被合并数据库物品表
+	//err = model.HandleItem(model.GDB1, model.GDB2)
+	//if err != nil {
+	//	fmt.Println(err)
+	//panic(err)
+	//}
 
 	fmt.Println("消耗的时间", time.Now().Unix()-t1)
 }

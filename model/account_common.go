@@ -1,5 +1,13 @@
 package model
 
+import (
+	"encoding/json"
+	"fmt"
+	"gorm.io/gorm"
+	"math"
+	"time"
+)
+
 /*
   `account_id` int unsigned NOT NULL COMMENT '账号id',
   `account_name` char(36) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL COMMENT '账号名',
@@ -51,4 +59,120 @@ type DataEx struct {
 
 func (m *AccountCommon) TableName() string {
 	return "account_common"
+}
+
+func HandleAccountCommon(db1, db2 *gorm.DB) error {
+	// 处理account_common表
+	var accounts1 []*AccountCommon
+	err := db1.Select("account_id, baibao_yuanbao, total_recharge, yuanbao_recharge, data_ex").Find(&accounts1).Error
+	//
+	if err != nil {
+		return err
+	}
+
+	var accounts2 []*AccountCommon
+	err = db2.Find(&accounts2).Error
+	//
+	if err != nil {
+		return err
+	}
+
+	// 把相同account_id的账号的数据充值元宝合并 data_ex 是个json串需要单独处理
+	a2 := make(map[uint32]*AccountCommon)
+	a1 := make(map[uint32]*AccountCommon)
+
+	alreadyAccount := make([]*AccountCommon, 0)
+	notExistAccount := make([]*AccountCommon, 0)
+
+	for _, v2 := range accounts2 {
+		a2[v2.AccountID] = v2
+	}
+
+	for _, v1 := range accounts1 {
+		a1[v1.AccountID] = v1
+	}
+
+	// A为基准
+	s := time.Now().Unix()
+	day := s / (60 * 60 * 24)
+	fmt.Println("+++++++++++++++++++++++", day)
+	for _, v2 := range accounts2 {
+		if _, ok := a1[v2.AccountID]; !ok {
+			// 没有找到对应的账号，直接插入
+			if v2.DataEx == "" {
+				v2.DataEx = "{}"
+			}
+			notExistAccount = append(notExistAccount, v2)
+			continue
+		}
+
+		data := a1[v2.AccountID]
+
+		// 找到对应的数据，数据叠加
+		v2.BaiBaoYuanBao += data.BaiBaoYuanBao
+		v2.TotalRecharge += data.TotalRecharge
+		v2.YuanBaoRecharge += data.YuanBaoRecharge
+
+		// 修改data_ex字段
+		d1 := v2.DataEx
+		d2 := data.DataEx
+		de1 := new(DataEx)
+		de2 := new(DataEx)
+
+		if d1 == "" {
+			d1 = "{}"
+		}
+
+		if d2 == "" {
+			d2 = "{}"
+		}
+
+		err := json.Unmarshal([]byte(d1), de1)
+		if err != nil {
+			return err
+		}
+
+		err = json.Unmarshal([]byte(d2), de2)
+		if err != nil {
+			return err
+		}
+
+		if day == int64(de1.TodayRechargeDay) && day == int64(de2.TodayRechargeDay) {
+			de1.TodayRecharge += de2.TodayRecharge
+		} else if day == int64(de2.TodayRechargeDay) {
+			de1.TodayRecharge = de2.TodayRecharge
+			de1.TodayRechargeDay = de2.TodayRechargeDay
+		}
+
+		if de1.TodayRechargeDay != 0 {
+			by, err := json.Marshal(&de1)
+			if err != nil {
+				panic(err)
+			}
+			v2.DataEx = string(by)
+		} else {
+			v2.DataEx = "{}"
+		}
+
+		alreadyAccount = append(alreadyAccount, v2)
+
+	}
+
+	repeatLength := len(alreadyAccount)
+	count := math.Ceil(float64(repeatLength) / float64(BaseLength))
+
+	fmt.Println(count)
+
+	// 对于存在的账号数据叠加
+	err = BatchUpdate(GDB1, Ac, alreadyAccount)
+	if err != nil {
+		return err
+	}
+
+	// 不存在的数据批量插入
+	err = BatchSave(GDB1, Ac, notExistAccount)
+	if err != nil {
+		return err
+	}
+	return nil
 }

@@ -2,6 +2,9 @@ package model
 
 import "gorm.io/gorm"
 
+// 这个可以在物品的所有逻辑处理之前就处理掉
+// 后面要把物品的数据加载进内存里面处理
+// 加载进内存的处理方式如果数据量很大的话，也是一个问题，内存不够用了。。。哎哎哎
 func HandleMail(db1, db2 *gorm.DB) error {
 	// 远程的数据库数据，合并过来的数据库
 	var MAXMailID uint32

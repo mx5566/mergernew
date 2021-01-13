@@ -46,7 +46,7 @@ type Item struct {
 	OwnerID         uint32 `gorm:"column:owner_id"`
 	AccountID       uint32 `gorm:"column:account_id"`
 	ContainerTypeID uint8  `gorm:"column:container_type_id"`
-	Suffix          uint8  `gorm:"column:suffix"`
+	Suffix          uint16 `gorm:"column:suffix"`
 	NameID          uint32 `gorm:"default:4294967295;column:name_id"`
 	BindTime        string `gorm:"char(20);column:bind_time"`
 	ScriptData1     uint32 `gorm:"column:script_data1"`
@@ -62,7 +62,6 @@ func (m *Item) TableName() string {
 }
 
 func HandleItem(db1, db2 *gorm.DB) error {
-
 	err := db1.Exec("ALTER TABLE item MODIFY serial BIGINT(21)  AUTO_INCREMENT;").Error
 	if err != nil {
 		return err
@@ -116,6 +115,63 @@ func HandleItemOwnerId(db1, db2 *gorm.DB, count uint32) error {
 
 	// 批量更新owner_id的值
 	err = BatchUpdate(db2, ItemOwnerID, items, map[string]interface{}{"count": count})
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func HandleItemRelation(db1, db2 *gorm.DB, increaseNum uint32) error {
+	err := db1.Exec("ALTER TABLE item MODIFY serial BIGINT(21)  AUTO_INCREMENT;").Error
+	if err != nil {
+		return err
+	}
+
+	var MAXItemID int64
+	type MaxStruct struct {
+		Max int64 `json:"max"`
+		Min int64 `json:"min"`
+	}
+
+	var result MaxStruct
+	err = db1.Raw("select max(serial) as max from item;").Scan(&result).Error
+	if err != nil {
+		return err
+	}
+
+	MAXItemID = result.Max
+	if MAXItemID == 0 {
+		err = db1.Exec("ALTER TABLE item auto_increment=500000000000;").Error
+		if err != nil {
+			return err
+		}
+	}
+
+	var items []*Item
+	err = db2.Select("serial, num, type_id, bind, lock_state, use_times, first_gain_time, create_mode, create_id, creator_id, create_time, owner_id, account_id, container_type_id, suffix, name_id, bind_time, script_data1, script_data2, create_bind, strdwExternData, item_old, source").Find(&items).Error
+	if err != nil {
+		return err
+	}
+
+	// 遍历所有的物品
+	for index, value := range items {
+		items[index].ItenOld = value.Serial
+		items[index].Source = "_copy"
+
+		// 把非邮件的物品所有者加指定值
+		if value.ContainerTypeID != 11 {
+			items[index].OwnerID += increaseNum
+		}
+
+		// 把所有8的 好像是礼包
+		if value.CreateNode == 8 {
+			items[index].CreateID += increaseNum
+		}
+	}
+
+	// 批量插入被合数据库表item
+	err = BatchSave(db1, ItemC, items)
 	if err != nil {
 		return err
 	}
