@@ -1,0 +1,1 @@
+2021-01-30 08:57:33	ERROR	handler merger handle err[Error 1146: Table 'game1.system_si' doesn't exist]	{"source": "mergernew", "ts": "2021-01-30 08:57:33"}

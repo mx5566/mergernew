@@ -1,0 +1,117 @@
+2021-01-30 09:04:40	INFO	Start DB ok...	{"source": "mergernew", "ts": "2021-01-30 09:04:40"}
+2021-01-30 09:04:43	DEBUG	HandlerMerger Start......	{"source": "mergernew", "ts": "2021-01-30 09:04:43"}
+2021-01-30 09:04:43	INFO	mergernew start...	{"source": "mergernew", "ts": "2021-01-30 09:04:43"}
+2021-01-30 09:04:43	DEBUG	handle cluster ok ... time[0]	{"source": "mergernew", "ts": "2021-01-30 09:04:43"}
+2021-01-30 09:04:43	DEBUG	handle account_common ok ... time[0]	{"source": "mergernew", "ts": "2021-01-30 09:04:43"}
+2021-01-30 09:04:43	DEBUG	handle mail ok ... time[0]	{"source": "mergernew", "ts": "2021-01-30 09:04:43"}
+2021-01-30 09:04:43	DEBUG	handle select item delta[0] start-item-id[500000017437]	{"source": "mergernew", "ts": "2021-01-30 09:04:43"}
+2021-01-30 09:04:43	DEBUG	handle item memory handle ... time[0]	{"source": "mergernew", "ts": "2021-01-30 09:04:43"}
+2021-01-30 09:04:43	DEBUG	handle equip batch save ... time[0]	{"source": "mergernew", "ts": "2021-01-30 09:04:43"}
+2021-01-30 09:04:43	DEBUG	handle jimai batch save ... time[0]	{"source": "mergernew", "ts": "2021-01-30 09:04:43"}
+2021-01-30 09:04:43	DEBUG	handle mail item batch save ... time[0]	{"source": "mergernew", "ts": "2021-01-30 09:04:43"}
+2021-01-30 09:04:43	DEBUG	drop item index  ... time[0]	{"source": "mergernew", "ts": "2021-01-30 09:04:43"}
+2021-01-30 09:04:43	DEBUG	handle item save ... time[0] start[2021-01-30 09:04:43]	{"source": "mergernew", "ts": "2021-01-30 09:04:43"}
+2021-01-30 09:04:44	DEBUG	create index item ... time[1] 	{"source": "mergernew", "ts": "2021-01-30 09:04:44"}
+2021-01-30 09:04:44	DEBUG	handle item relation ok ... time[1]	{"source": "mergernew", "ts": "2021-01-30 09:04:44"}
+2021-01-30 09:04:44	DEBUG	guild lastID [100013]	{"source": "mergernew", "ts": "2021-01-30 09:04:44"}
+2021-01-30 09:04:44	DEBUG	handle guild relation ok ..... time[0]	{"source": "mergernew", "ts": "2021-01-30 09:04:44"}
+2021-01-30 09:04:44	DEBUG	save role data ok ..... time[0]	{"source": "mergernew", "ts": "2021-01-30 09:04:44"}
+2021-01-30 09:04:44	DEBUG	handle role data ok ..... time[0]	{"source": "mergernew", "ts": "2021-01-30 09:04:44"}
+2021-01-30 09:04:44	DEBUG	handle blacklist ok ... time[0]	{"source": "mergernew", "ts": "2021-01-30 09:04:44"}
+2021-01-30 09:04:44	DEBUG	handle buff ok ... time[0]	{"source": "mergernew", "ts": "2021-01-30 09:04:44"}
+2021-01-30 09:04:44	DEBUG	handle enemy ok ... time[0]	{"source": "mergernew", "ts": "2021-01-30 09:04:44"}
+2021-01-30 09:04:44	DEBUG	handle friend ok ... time[0]	{"source": "mergernew", "ts": "2021-01-30 09:04:44"}
+2021-01-30 09:04:44	DEBUG	handle leftmsg ok ... time[0]	{"source": "mergernew", "ts": "2021-01-30 09:04:44"}
+2021-01-30 09:04:44	DEBUG	handle maplimit ok ... time[0]	{"source": "mergernew", "ts": "2021-01-30 09:04:44"}
+2021-01-30 09:04:44	DEBUG	handle reward ok ... time[0]	{"source": "mergernew", "ts": "2021-01-30 09:04:44"}
+2021-01-30 09:04:44	DEBUG	handle role_extend ok ... time[0]	{"source": "mergernew", "ts": "2021-01-30 09:04:44"}
+2021-01-30 09:04:44	DEBUG	handle skill ok ... time[0]	{"source": "mergernew", "ts": "2021-01-30 09:04:44"}
+2021-01-30 09:04:44	DEBUG	handle title ok ... time[0]	{"source": "mergernew", "ts": "2021-01-30 09:04:44"}
+2021-01-30 09:04:44	DEBUG	handle sign ok ... time[0]	{"source": "mergernew", "ts": "2021-01-30 09:04:44"}
+2021-01-30 09:04:44	DEBUG	HandleSystemIB ok ... time[0]	{"source": "mergernew", "ts": "2021-01-30 09:04:44"}
+2021-01-30 09:04:44	DEBUG	HandleSystemII ok ... time[0]	{"source": "mergernew", "ts": "2021-01-30 09:04:44"}
+2021-01-30 09:04:44	DEBUG	HandleSystemIS ok ... time[0]	{"source": "mergernew", "ts": "2021-01-30 09:04:44"}
+2021-01-30 09:04:44	DEBUG	HandleSystemSB ok ... time[0]	{"source": "mergernew", "ts": "2021-01-30 09:04:44"}
+2021-01-30 09:04:45	DEBUG	HandleSystemSI ok ... time[1]	{"source": "mergernew", "ts": "2021-01-30 09:04:45"}
+2021-01-30 09:04:45	DEBUG	HandleSystemSS ok ... time[0]	{"source": "mergernew", "ts": "2021-01-30 09:04:45"}
+2021-01-30 09:04:45	DEBUG	handle system ok ... time[1]	{"source": "mergernew", "ts": "2021-01-30 09:04:45"}
+2021-01-30 09:04:45	DEBUG	mergernew success 消耗时间..... time[2]	{"source": "mergernew", "ts": "2021-01-30 09:04:45"}
+2021-01-30 09:04:45	DEBUG	HandlerMerger Start......	{"source": "mergernew", "ts": "2021-01-30 09:04:45"}
+2021-01-30 09:07:38	INFO	Start DB ok...	{"source": "mergernew", "ts": "2021-01-30 09:07:38"}
+2021-01-30 09:07:46	DEBUG	HandlerMerger Start......	{"source": "mergernew", "ts": "2021-01-30 09:07:46"}
+2021-01-30 09:07:46	INFO	mergernew start...	{"source": "mergernew", "ts": "2021-01-30 09:07:46"}
+2021-01-30 09:07:46	DEBUG	handle cluster ok ... time[0]	{"source": "mergernew", "ts": "2021-01-30 09:07:46"}
+2021-01-30 09:07:46	DEBUG	handle account_common ok ... time[0]	{"source": "mergernew", "ts": "2021-01-30 09:07:46"}
+2021-01-30 09:07:46	DEBUG	handle mail ok ... time[0]	{"source": "mergernew", "ts": "2021-01-30 09:07:46"}
+2021-01-30 09:07:46	DEBUG	handle select item delta[0] start-item-id[500000017437]	{"source": "mergernew", "ts": "2021-01-30 09:07:46"}
+2021-01-30 09:07:46	DEBUG	handle item memory handle ... time[0]	{"source": "mergernew", "ts": "2021-01-30 09:07:46"}
+2021-01-30 09:07:46	DEBUG	handle equip batch save ... time[0]	{"source": "mergernew", "ts": "2021-01-30 09:07:46"}
+2021-01-30 09:07:46	DEBUG	handle jimai batch save ... time[0]	{"source": "mergernew", "ts": "2021-01-30 09:07:46"}
+2021-01-30 09:07:46	DEBUG	handle mail item batch save ... time[0]	{"source": "mergernew", "ts": "2021-01-30 09:07:46"}
+2021-01-30 09:07:46	DEBUG	drop item index  ... time[0]	{"source": "mergernew", "ts": "2021-01-30 09:07:46"}
+2021-01-30 09:07:46	DEBUG	handle item save ... time[0] start[2021-01-30 09:07:46]	{"source": "mergernew", "ts": "2021-01-30 09:07:46"}
+2021-01-30 09:07:46	DEBUG	create index item ... time[0] 	{"source": "mergernew", "ts": "2021-01-30 09:07:46"}
+2021-01-30 09:07:46	DEBUG	handle item relation ok ... time[0]	{"source": "mergernew", "ts": "2021-01-30 09:07:46"}
+2021-01-30 09:07:46	DEBUG	guild lastID [100013]	{"source": "mergernew", "ts": "2021-01-30 09:07:46"}
+2021-01-30 09:07:46	DEBUG	handle guild relation ok ..... time[0]	{"source": "mergernew", "ts": "2021-01-30 09:07:46"}
+2021-01-30 09:07:47	DEBUG	save role data ok ..... time[1]	{"source": "mergernew", "ts": "2021-01-30 09:07:47"}
+2021-01-30 09:07:47	DEBUG	handle role data ok ..... time[1]	{"source": "mergernew", "ts": "2021-01-30 09:07:47"}
+2021-01-30 09:07:47	DEBUG	handle blacklist ok ... time[0]	{"source": "mergernew", "ts": "2021-01-30 09:07:47"}
+2021-01-30 09:07:47	DEBUG	handle buff ok ... time[0]	{"source": "mergernew", "ts": "2021-01-30 09:07:47"}
+2021-01-30 09:07:47	DEBUG	handle enemy ok ... time[0]	{"source": "mergernew", "ts": "2021-01-30 09:07:47"}
+2021-01-30 09:07:47	DEBUG	handle friend ok ... time[0]	{"source": "mergernew", "ts": "2021-01-30 09:07:47"}
+2021-01-30 09:07:47	DEBUG	handle leftmsg ok ... time[0]	{"source": "mergernew", "ts": "2021-01-30 09:07:47"}
+2021-01-30 09:07:47	DEBUG	handle maplimit ok ... time[0]	{"source": "mergernew", "ts": "2021-01-30 09:07:47"}
+2021-01-30 09:07:47	DEBUG	handle reward ok ... time[0]	{"source": "mergernew", "ts": "2021-01-30 09:07:47"}
+2021-01-30 09:07:47	DEBUG	handle role_extend ok ... time[0]	{"source": "mergernew", "ts": "2021-01-30 09:07:47"}
+2021-01-30 09:07:47	DEBUG	handle skill ok ... time[0]	{"source": "mergernew", "ts": "2021-01-30 09:07:47"}
+2021-01-30 09:07:47	DEBUG	handle title ok ... time[0]	{"source": "mergernew", "ts": "2021-01-30 09:07:47"}
+2021-01-30 09:07:47	DEBUG	handle sign ok ... time[0]	{"source": "mergernew", "ts": "2021-01-30 09:07:47"}
+2021-01-30 09:07:47	DEBUG	HandleSystemIB ok ... time[0]	{"source": "mergernew", "ts": "2021-01-30 09:07:47"}
+2021-01-30 09:07:47	DEBUG	HandleSystemII ok ... time[0]	{"source": "mergernew", "ts": "2021-01-30 09:07:47"}
+2021-01-30 09:07:47	DEBUG	HandleSystemIS ok ... time[0]	{"source": "mergernew", "ts": "2021-01-30 09:07:47"}
+2021-01-30 09:07:47	DEBUG	HandleSystemSB ok ... time[0]	{"source": "mergernew", "ts": "2021-01-30 09:07:47"}
+2021-01-30 09:07:47	DEBUG	HandleSystemSI ok ... time[0]	{"source": "mergernew", "ts": "2021-01-30 09:07:47"}
+2021-01-30 09:07:47	DEBUG	HandleSystemSS ok ... time[0]	{"source": "mergernew", "ts": "2021-01-30 09:07:47"}
+2021-01-30 09:07:47	DEBUG	handle system ok ... time[0]	{"source": "mergernew", "ts": "2021-01-30 09:07:47"}
+2021-01-30 09:07:47	DEBUG	mergernew success 消耗时间..... time[1]	{"source": "mergernew", "ts": "2021-01-30 09:07:47"}
+2021-01-30 09:07:47	DEBUG	HandlerMerger Start......	{"source": "mergernew", "ts": "2021-01-30 09:07:47"}
+2021-01-30 09:19:53	INFO	Start DB ok...	{"source": "mergernew", "ts": "2021-01-30 09:19:53"}
+2021-01-30 09:19:57	DEBUG	HandlerMerger Start......	{"source": "mergernew", "ts": "2021-01-30 09:19:57"}
+2021-01-30 09:19:57	INFO	mergernew start...	{"source": "mergernew", "ts": "2021-01-30 09:19:57"}
+2021-01-30 09:19:57	DEBUG	handle cluster ok ... time[0]	{"source": "mergernew", "ts": "2021-01-30 09:19:57"}
+2021-01-30 09:19:57	DEBUG	handle account_common ok ... time[0]	{"source": "mergernew", "ts": "2021-01-30 09:19:57"}
+2021-01-30 09:19:57	DEBUG	handle mail ok ... time[0]	{"source": "mergernew", "ts": "2021-01-30 09:19:57"}
+2021-01-30 09:19:57	DEBUG	handle select item delta[0] start-item-id[500000017437]	{"source": "mergernew", "ts": "2021-01-30 09:19:57"}
+2021-01-30 09:19:57	DEBUG	handle item memory handle ... time[0]	{"source": "mergernew", "ts": "2021-01-30 09:19:57"}
+2021-01-30 09:19:57	DEBUG	handle equip batch save ... time[0]	{"source": "mergernew", "ts": "2021-01-30 09:19:57"}
+2021-01-30 09:19:57	DEBUG	handle jimai batch save ... time[0]	{"source": "mergernew", "ts": "2021-01-30 09:19:57"}
+2021-01-30 09:19:57	DEBUG	handle mail item batch save ... time[0]	{"source": "mergernew", "ts": "2021-01-30 09:19:57"}
+2021-01-30 09:19:57	DEBUG	drop item index  ... time[0]	{"source": "mergernew", "ts": "2021-01-30 09:19:57"}
+2021-01-30 09:19:57	DEBUG	handle item save ... time[0] start[2021-01-30 09:19:57]	{"source": "mergernew", "ts": "2021-01-30 09:19:57"}
+2021-01-30 09:19:57	DEBUG	create index item ... time[0] 	{"source": "mergernew", "ts": "2021-01-30 09:19:57"}
+2021-01-30 09:19:57	DEBUG	handle item relation ok ... time[0]	{"source": "mergernew", "ts": "2021-01-30 09:19:57"}
+2021-01-30 09:19:57	DEBUG	guild lastID [100013]	{"source": "mergernew", "ts": "2021-01-30 09:19:57"}
+2021-01-30 09:19:57	DEBUG	handle guild relation ok ..... time[0]	{"source": "mergernew", "ts": "2021-01-30 09:19:57"}
+2021-01-30 09:19:58	DEBUG	save role data ok ..... time[1]	{"source": "mergernew", "ts": "2021-01-30 09:19:58"}
+2021-01-30 09:19:58	DEBUG	handle role data ok ..... time[1]	{"source": "mergernew", "ts": "2021-01-30 09:19:58"}
+2021-01-30 09:19:58	DEBUG	handle blacklist ok ... time[0]	{"source": "mergernew", "ts": "2021-01-30 09:19:58"}
+2021-01-30 09:19:58	DEBUG	handle buff ok ... time[0]	{"source": "mergernew", "ts": "2021-01-30 09:19:58"}
+2021-01-30 09:19:58	DEBUG	handle enemy ok ... time[0]	{"source": "mergernew", "ts": "2021-01-30 09:19:58"}
+2021-01-30 09:19:58	DEBUG	handle friend ok ... time[0]	{"source": "mergernew", "ts": "2021-01-30 09:19:58"}
+2021-01-30 09:19:58	DEBUG	handle leftmsg ok ... time[0]	{"source": "mergernew", "ts": "2021-01-30 09:19:58"}
+2021-01-30 09:19:58	DEBUG	handle maplimit ok ... time[0]	{"source": "mergernew", "ts": "2021-01-30 09:19:58"}
+2021-01-30 09:19:58	DEBUG	handle reward ok ... time[0]	{"source": "mergernew", "ts": "2021-01-30 09:19:58"}
+2021-01-30 09:19:58	DEBUG	handle role_extend ok ... time[0]	{"source": "mergernew", "ts": "2021-01-30 09:19:58"}
+2021-01-30 09:19:58	DEBUG	handle skill ok ... time[0]	{"source": "mergernew", "ts": "2021-01-30 09:19:58"}
+2021-01-30 09:19:58	DEBUG	handle title ok ... time[0]	{"source": "mergernew", "ts": "2021-01-30 09:19:58"}
+2021-01-30 09:19:58	DEBUG	handle sign ok ... time[0]	{"source": "mergernew", "ts": "2021-01-30 09:19:58"}
+2021-01-30 09:19:58	DEBUG	HandleSystemIB ok ... time[0]	{"source": "mergernew", "ts": "2021-01-30 09:19:58"}
+2021-01-30 09:19:58	DEBUG	HandleSystemII ok ... time[0]	{"source": "mergernew", "ts": "2021-01-30 09:19:58"}
+2021-01-30 09:19:58	DEBUG	HandleSystemIS ok ... time[0]	{"source": "mergernew", "ts": "2021-01-30 09:19:58"}
+2021-01-30 09:19:58	DEBUG	HandleSystemSB ok ... time[0]	{"source": "mergernew", "ts": "2021-01-30 09:19:58"}
+2021-01-30 09:19:58	DEBUG	HandleSystemSI ok ... time[0]	{"source": "mergernew", "ts": "2021-01-30 09:19:58"}
+2021-01-30 09:19:58	DEBUG	HandleSystemSS ok ... time[0]	{"source": "mergernew", "ts": "2021-01-30 09:19:58"}
+2021-01-30 09:19:58	DEBUG	handle system ok ... time[0]	{"source": "mergernew", "ts": "2021-01-30 09:19:58"}
+2021-01-30 09:19:58	DEBUG	mergernew success 消耗时间..... time[1]	{"source": "mergernew", "ts": "2021-01-30 09:19:58"}
+2021-01-30 09:19:58	DEBUG	HandlerMerger Start......	{"source": "mergernew", "ts": "2021-01-30 09:19:58"}
