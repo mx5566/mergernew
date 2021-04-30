@@ -72,7 +72,7 @@ func HandleMailByIncreaseID(db1, db2 *gorm.DB) (map[uint32]uint32, error) {
 
 	// id采用自增长id的方式去处理，避免跳跃的增长导致32为的不够用
 	var mails []*MailEx
-	err = db1.Table("mail").Select("mail_id").Order("mail_id asc").Find(&mails).Error
+	err = db2.Table("mail").Select("mail_id").Order("mail_id asc").Find(&mails).Error
 	if err != nil {
 		return nil, err
 	}
@@ -114,7 +114,7 @@ func HandleMailItem(db1, db2 *gorm.DB, mapItems map[int64]*ItemEx, mapMails map[
 		} else {
 			//
 			need = true
-			logm.DebugfE("MailItems[%d] not found in item table", value.ItemSerialNew)
+			logm.ErrorfE("MailItems[%d] not found in item table", value.ItemSerialNew)
 		}
 
 		if need {
@@ -133,6 +133,8 @@ func HandleMailItem(db1, db2 *gorm.DB, mapItems map[int64]*ItemEx, mapMails map[
 	if err != nil {
 		return err
 	}
+
+	mailItems = make([]*Mail, 0)
 
 	return nil
 }

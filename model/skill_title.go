@@ -42,7 +42,7 @@ type Title struct {
 func HandleTitle(db1, db2 *gorm.DB) error {
 	var ts []*Title
 
-	err := db2.Table("enemy").Find(&ts).Error
+	err := db2.Table("title").Find(&ts).Error
 	if err != nil {
 		return err
 	}

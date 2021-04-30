@@ -108,6 +108,7 @@ func HandleSystemII(db1, db2 *gorm.DB) error {
 		mapTypeV[skey][sat] = i
 	}
 
+	deleteIndex := []int{}
 	for i := 0; i < len(sii2); i++ {
 		sat := sii2[i].SysAreaType
 		skey := sii2[i].SysKey
@@ -126,7 +127,8 @@ func HandleSystemII(db1, db2 *gorm.DB) error {
 						sii2 = append(sii2[0:i], sii2[i+1:]...)
 						i--
 					} else {
-						sii1 = append(sii1[0:v2], sii1[v2+1:]...)
+						//sii1 = append(sii1[0:v2], sii1[v2+1:]...)
+						deleteIndex = append(deleteIndex, v2)
 					}
 				}
 			}
@@ -134,12 +136,13 @@ func HandleSystemII(db1, db2 *gorm.DB) error {
 		} else if sat == 3 {
 			if v1, ok := mapTypeV[skey]; ok {
 				// 判断类型是不是存在
-				if v2, ok := v1[2]; ok {
+				if v2, ok := v1[3]; ok {
 					if sii1[v2].SysValue < sii2[i].SysValue {
 						sii2 = append(sii2[0:i], sii2[i+1:]...)
 						i--
 					} else {
-						sii1 = append(sii1[0:v2], sii1[v2+1:]...)
+						deleteIndex = append(deleteIndex, v2)
+						//sii1 = append(sii1[0:v2], sii1[v2+1:]...)
 					}
 				}
 			}
@@ -147,7 +150,7 @@ func HandleSystemII(db1, db2 *gorm.DB) error {
 		} else if sat == 4 {
 			if v1, ok := mapTypeV[skey]; ok {
 				// 判断类型是不是存在
-				if v2, ok := v1[2]; ok {
+				if v2, ok := v1[4]; ok {
 					sii1[v2].SysValue += sii2[i].SysValue
 					sii2 = append(sii2[0:i], sii2[i+1:]...)
 					i--
@@ -158,6 +161,12 @@ func HandleSystemII(db1, db2 *gorm.DB) error {
 			sii2 = append(sii2[0:i], sii2[i+1:]...)
 			i--
 		}
+	}
+
+	var count = 0
+	for _, value := range deleteIndex {
+		sii1 = append(sii1[0:value-count], sii1[value+1-count:]...)
+		count++
 	}
 
 	sii1 = append(sii1, sii2...)
@@ -232,7 +241,7 @@ func HandleSystemIS(db1, db2 *gorm.DB) error {
 		} else if sat == 5 {
 			if v1, ok := mapTypeV[skey]; ok {
 				// 判断类型是不是存在
-				if v2, ok := v1[2]; ok {
+				if v2, ok := v1[5]; ok {
 					sis1[v2].SysValue += sis2[i].SysValue
 					sis2 = append(sis2[0:i], sis2[i+1:]...)
 					i--
@@ -268,22 +277,82 @@ type SystemSB struct {
 }
 
 func HandleSystemSB(db1, db2 *gorm.DB) error {
+	var ssb1 []*SystemSB
+	var ssb2 []*SystemSB
+
+	err := db1.Table("system_s_b").Find(&ssb1).Error
+	if err != nil {
+		return err
+	}
+
+	err = db2.Table("system_s_b").Find(&ssb2).Error
+	if err != nil {
+		return err
+	}
+
+	// logic handle
+	// k1 SysKey k2 SysAreaType v2 sss1 / sss2 的数组index
+	mapTypeV := make(map[string]map[int16]int)
+	// logic handle
+	for i := 0; i < len(ssb1); i++ {
+		if ssb1[i].SysAreaType == 1 {
+			ssb1 = append(ssb1[0:i], ssb1[i+1:]...)
+			i--
+			continue
+		} else if ssb1[i].SysAreaType == 6 {
+			ssb1 = append(ssb1[0:i], ssb1[i+1:]...)
+			i--
+			continue
+		}
+		sat := ssb1[i].SysAreaType
+		skey := ssb1[i].SysKey
+
+		if mapTypeV[skey] == nil {
+			mapTypeV[skey] = make(map[int16]int)
+		}
+
+		mapTypeV[skey][sat] = i
+	}
+
+	for i := 0; i < len(ssb2); i++ {
+		sat := ssb2[i].SysAreaType
+		skey := ssb2[i].SysKey
+
+		if sat == 6 {
+			ssb2 = append(ssb2[0:i], ssb2[i+1:]...)
+			i--
+			continue
+		} else if sat == 1 {
+			continue
+		} else if sat == 5 {
+			if v1, ok := mapTypeV[skey]; ok {
+				// 判断类型是不是存在
+				if v2, ok := v1[5]; ok {
+					ssb1[v2].SysValue = append(ssb1[v2].SysValue, ssb2[i].SysValue...)
+					ssb2 = append(ssb2[0:i], ssb2[i+1:]...)
+					i--
+				}
+			}
+			continue
+		} else {
+			ssb2 = append(ssb2[0:i], ssb2[i+1:]...)
+			i--
+		}
+	}
+
+	ssb1 = append(ssb1, ssb2...)
+	err = db1.Exec("truncate table system_s_b;").Error
+	if err != nil {
+		return err
+	}
+
+	//Clauses(clause.Insert{Modifier: "IGNORE"}).
+	err = BatchSave(db1, SystemSBC, ssb1)
+	if err != nil {
+		return err
+	}
+
 	return nil
-	/*
-		var ssb []*SystemSB
-
-		err := db2.Table("system_s_b").Find(&ssb).Error
-		if err != nil {
-			return err
-		}
-
-		//Clauses(clause.Insert{Modifier: "IGNORE"}).
-		err = BatchSave(db1, SystemSBC, ssb)
-		if err != nil {
-			return err
-		}
-
-		return nil*/
 }
 
 type SystemSI struct {
@@ -327,13 +396,10 @@ func HandleSystemSI(db1, db2 *gorm.DB) error {
 			mapTypeV[skey] = make(map[int16]int)
 		}
 
-		if mapTypeV[skey] == nil {
-			mapTypeV[skey] = make(map[int16]int)
-		}
-
 		mapTypeV[skey][sat] = i
 	}
 
+	deleteIndex := []int{}
 	for i := 0; i < len(ssi2); i++ {
 		sat := ssi2[i].SysAreaType
 		skey := ssi2[i].SysKey
@@ -352,7 +418,9 @@ func HandleSystemSI(db1, db2 *gorm.DB) error {
 						ssi2 = append(ssi2[0:i], ssi2[i+1:]...)
 						i--
 					} else {
-						ssi1 = append(ssi1[0:v2], ssi1[v2+1:]...)
+
+						deleteIndex = append(deleteIndex, v2)
+						//ssi1 = append(ssi1[0:v2], ssi1[v2+1:]...)
 					}
 				}
 			}
@@ -360,12 +428,13 @@ func HandleSystemSI(db1, db2 *gorm.DB) error {
 		} else if sat == 3 {
 			if v1, ok := mapTypeV[skey]; ok {
 				// 判断类型是不是存在
-				if v2, ok := v1[2]; ok {
-					if ssi1[v2].SysValue < ssi1[i].SysValue {
+				if v2, ok := v1[3]; ok {
+					if ssi1[v2].SysValue < ssi2[i].SysValue {
 						ssi2 = append(ssi2[0:i], ssi2[i+1:]...)
 						i--
 					} else {
-						ssi1 = append(ssi1[0:v2], ssi1[v2+1:]...)
+						deleteIndex = append(deleteIndex, v2)
+						//ssi1 = append(ssi1[0:v2], ssi1[v2+1:]...)
 					}
 				}
 			}
@@ -373,7 +442,7 @@ func HandleSystemSI(db1, db2 *gorm.DB) error {
 		} else if sat == 4 {
 			if v1, ok := mapTypeV[skey]; ok {
 				// 判断类型是不是存在
-				if v2, ok := v1[2]; ok {
+				if v2, ok := v1[4]; ok {
 					ssi1[v2].SysValue += ssi2[i].SysValue
 					ssi2 = append(ssi2[0:i], ssi2[i+1:]...)
 					i--
@@ -384,6 +453,12 @@ func HandleSystemSI(db1, db2 *gorm.DB) error {
 			ssi2 = append(ssi2[0:i], ssi2[i+1:]...)
 			i--
 		}
+	}
+
+	var count = 0
+	for _, value := range deleteIndex {
+		ssi1 = append(ssi1[0:value-count], ssi1[value+1-count:]...)
+		count++
 	}
 
 	ssi1 = append(ssi1, ssi2...)
@@ -459,7 +534,7 @@ func HandleSystemSS(db1, db2 *gorm.DB) error {
 		} else if sat == 5 {
 			if v1, ok := mapTypeV[skey]; ok {
 				// 判断类型是不是存在
-				if v2, ok := v1[2]; ok {
+				if v2, ok := v1[5]; ok {
 					sss1[v2].SysValue += sss2[i].SysValue
 					sss2 = append(sss2[0:i], sss2[i+1:]...)
 					i--

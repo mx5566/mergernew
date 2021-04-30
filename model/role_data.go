@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"github.com/mx5566/logm"
 	"gorm.io/gorm"
+	"math"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -181,7 +183,7 @@ type RoleData struct {
 	VipDeadLine              string  `gorm:"not null;column:vip_deadline;char(20)"`
 	StrdwExternData          []byte  `gorm:"column:strdwExternData"`
 	RofbidFlag               int8    `gorm:"not null;column:rofbid_flag"`
-	ExternData2              string  `gorm:"not null;column:extern_data2"`
+	ExternData2              string  `gorm:"not null;column:extern_data2;default:'{}'"`
 	RoleNameOrigin           string  `gorm:"column:role_name_origin;char(32)"`
 }
 
@@ -200,19 +202,51 @@ func (s SortRoleData) Less(i, j int) bool {
 }
 
 func HandleRoleData(db1, db2, db3, db4 *gorm.DB) error {
+	// 输出内存信息
+	PrintStatus("角色表加载角色数据之前")
 	var roles1 []*RoleData
 	var roles2 []*RoleData
 
-	err := db1.Find(&roles1).Error
+	t2 := time.Now().Unix()
+	delta := t2 - CurrentTime
+	SetCurrent(Stage_71, "", delta)
+
+	err := db1.Table("role_data").Select("account_id, role_id, role_name, total_tax, remove_flag, level," +
+		"create_time, rofbid_flag, role_name_origin").Find(&roles1).Error
 	if err != nil {
 		return err
 	}
 
-	err = db2.Find(&roles2).Error
+	err = db2.Table("role_data").Select("account_id, role_id, role_name, role_name_crc, sex, hair_model_id," +
+		"hair_color_id, face_model_id, face_detail_id, dress_model_id, visualizeid, avatar_equip, display_set, map_id, x, y," +
+		"z, face_x, face_y, face_z, reborn_map_id, class, classex, level, exp_cur_level, hp, " +
+		"mp, rage, endurance, vitality, injury, knowledge, morale, morality, culture, credit, identity," +
+		"vip_point, att_avail, talent_avail, physique_added, strength_added, pneuma_added, " +
+		"innerforce_added, technique_added, agility_added, talent_type1, talent_type2, talent_type3, " +
+		"talent_type4, talent_val1, talent_val2, talent_val3, talent_val4, safe_guard_flag, pk_value," +
+		"close_safe_guard_time, bag_size, bag_gold, bag_silver, bag_copper, bag_bind_gold, bag_bind_silver, " +
+		"bag_bind_copper, bag_yuanbao, exchange_volume, guild_id, team_id, total_tax, remote_open_set," +
+		"cur_title_id, get_mall_free_time, create_time, login_time, logout_time, online_time, cur_online_time," +
+		"leave_guild_time, remove_flag, remove_time, treasure_sum, stall_level, stall_daily_exp, stall_cur_exp, " +
+		"stall_last_time, send_mail_num, master_id, masterprentice_forbid_time, map_limit_num, own_instance_id," +
+		"own_instance_map_id, instance_create_time, hang_num, is_exp, is_brotherhood, leave_exp, leave_brotherhood, " +
+		"pet_packet_num, role_talk, total_mastermoral, kill_num, gift_group_id, gift_step, gift_id, gift_leaving_time," +
+		"gift_get, role_camp, paimailimit, banklimit, exbagstep, exwarestep, vigour, today_online_tick," +
+		"history_vigour_cost, ware_size, ware_gold, ware_silver, ware_copper, signature_name, circle_quest, yuanbao_exchange_num, " +
+		"achievemetn_point, forbid_talk_start, forbid_talk_end, change_name, graduate_num, destory_equip_count, cur_1v1_score," +
+		"day_1v1_score, day_1v1_num, week_1v1_score, score_1v1_award, last_change_name_time, delete_role_guard_time, " +
+		"exploits, circle_quest_refresh, exploitslimit, active_num, active_data, active_receive, justice, purpuredec, circle_quest_perdaynumber," +
+		"day_clear, cooldownrevive_cd, circle_quest_refresh_daymax, shihun, perday_hang_getexp_timems, achievemetn_num," +
+		"pet_xiulian_size, perday_vigour_get_total, guild_active_num, guild_active_data, guild_active_receive, " +
+		"god_level, master_moral, perday_prentice_num, master_repution_reward, cur_title_id2, " +
+		"cur_title_id3, instance_pass, shaodang_begin_time, shaodang_index, spouse_id, vip_level, vip_deadline," +
+		"rofbid_flag, role_name_origin").Find(&roles2).Error
 	if err != nil {
 		return err
 	}
 
+	// 输出内存信息
+	PrintStatus("角色表加载角色数据之后")
 	//length := len(roles1)
 	// 内存执行效率还是高
 	// 把没有初始化的名字全部初始化
@@ -242,13 +276,19 @@ func HandleRoleData(db1, db2, db3, db4 *gorm.DB) error {
 		if roles2[key].RofbidFlag <= 1 {
 			roles2[key].RofbidFlag = 0
 		}
+
+		//if value.ExternData2 == nil {
+		//
+		//}
 	}
 
 	// 最初的roles1的角色个数， 用来拆分数组的
 	lengthRole1 := len(roles1)
-
+	lengthRole2 := len(roles2)
 	// 用户内存合并
 	roles1 = append(roles1, roles2...)
+
+	roles2 = make([]*RoleData, 0)
 
 	// 同一个账号下面没有删除合没有禁用的角色对应的roles1里面的索引存储下来
 	mapAccountRoles := make(map[uint32][]int)
@@ -256,16 +296,18 @@ func HandleRoleData(db1, db2, db3, db4 *gorm.DB) error {
 	for key, value := range roles1 {
 		roles1[key].RoleNameOrigin = strings.Replace(value.RoleNameOrigin, "_", "", -1)
 
-		length := len(value.RoleNameOrigin)
+		length := len(roles1[key].RoleNameOrigin)
 		if length > 21 {
 			// 截掉一个字符
-			r := []rune(value.RoleNameOrigin)
+			r := []rune(roles1[key].RoleNameOrigin)
 			r = r[0 : len(r)-1]
 
 			name := string(r)
 			// 转换回来
 			roles1[key].RoleNameOrigin = name
 			roles1[key].RoleName = name
+		} else {
+			roles1[key].RoleName = roles1[key].RoleNameOrigin
 		}
 
 		// 个数+1
@@ -322,14 +364,14 @@ func HandleRoleData(db1, db2, db3, db4 *gorm.DB) error {
 
 	if c > 0 {
 		// 删除role_name_crc的索引
-		str := fmt.Sprintf("drop index role_name_crc on role_data")
+		str := fmt.Sprintf("drop index role_name_crc on role_data;")
 		err = db1.Exec(str).Error
 		if err != nil {
 			return err
 		}
 	}
-	t2 := time.Now().Unix()
-	delta := t2 - CurrentTime
+	t2 = time.Now().Unix()
+	delta = t2 - CurrentTime
 	SetCurrent(Stage_80, "", delta)
 
 	// handle role guild
@@ -339,10 +381,13 @@ func HandleRoleData(db1, db2, db3, db4 *gorm.DB) error {
 	}
 	t2 = time.Now().Unix()
 	delta = t2 - CurrentTime
+
+	PrintStatus("角色表保存角色数据之前")
+
 	logm.DebugfE("handle guild relation ok ..... time[%d]", delta)
 
 	SetCurrent(Stage_90, "", delta)
-	err = SaveRoleData(db1, roles1)
+	err = SaveRoleData(db1, db2, roles1, lengthRole1, lengthRole2)
 	if err != nil {
 		return err
 	}
@@ -350,6 +395,8 @@ func HandleRoleData(db1, db2, db3, db4 *gorm.DB) error {
 	delta = t2 - CurrentTime
 	logm.DebugfE("save role data ok ..... time[%d]", delta)
 
+	// 输出内存信息
+	PrintStatus("角色表保存角色数据之后")
 	//
 	return nil
 }
@@ -423,17 +470,75 @@ func RenameRole(roles1 []*RoleData) error {
 	return nil
 }
 
-func SaveRoleData(db1 *gorm.DB, roles1 []*RoleData) error {
-	// 保存之前线截断role_data表
-	err := db1.Table("role_data").Exec("truncate table role_data;").Error
+func SaveRoleData(db1, db2 *gorm.DB, roles1 []*RoleData, length1, length2 int) error {
+	PrintStatus("批量更新db1中角色数据之前")
+	t1 := time.Now().Unix()
+	// 1、先更新db1中role_data的数据
+	err := BatchUpdate(db1, RoleDataUp1C, roles1[0:length1])
 	if err != nil {
 		return err
 	}
+	delta := time.Now().Unix() - t1
+	t1 = time.Now().Unix()
+	logm.DebugfE("批量更新角色表数据 耗时[%d]", delta)
+	PrintStatus("批量更新db1中角色数据之后")
 
-	// 先清理db1的role_data的所有数据
-	err = BatchSave(db1, RoleDataC, roles1)
+	// 保存之前线截断role_data表
+	//	//err := db1.Table("role_data").Exec("truncate table role_data;").Error
+	//	//if err != nil {
+	//	//	return err
+	//	//}
+
+	// 2、批量保存db2中的role_data数据到db1中
+	// 把2中的不包含大二进制数据的字段先插入数据库
+	PrintStatus("批量保存db2中角色数据到db1之前")
+	err = BatchSave(db1, RoleDataC, roles1[length1:])
 	if err != nil {
 		return err
+	}
+	delta = time.Now().Unix() - t1
+	t1 = time.Now().Unix()
+	logm.DebugfE("批量保存db2中的角色数据 耗时[%d]", delta)
+	PrintStatus("批量保存db2中角色数据到db1之后")
+
+	PrintStatus("批量更新db2中角色数据到db1之前")
+	// 3、分批把2中的大的二进制数据加载进来更新到1中
+	err = HandleUpdateRoleDataBlob(db1, db2, length2)
+	if err != nil {
+		return err
+	}
+	delta = time.Now().Unix() - t1
+	logm.DebugfE("批量更新保存db2大的二进制数据 耗时[%d]", delta)
+	PrintStatus("批量更新db2中角色数据到db1之后")
+
+	return nil
+}
+
+func HandleUpdateRoleDataBlob(db1, db2 *gorm.DB, length int) error {
+	base := 10000
+
+	tableCount := math.Ceil(float64(length) / float64(base))
+
+	for i := 0; i < int(tableCount); i++ {
+		// 输出内存信息
+		PrintStatus("角色表分批保存额外大二进制数据之前" + strconv.Itoa(i))
+
+		var rolesT []*RoleData
+		err := db2.Table("role_data").Select("role_id, script_data, role_help, " +
+			"key_info, strdwExternData, extern_data2").Offset(i * base).Limit(base).Find(&rolesT).Error
+		if err != nil {
+			return err
+		}
+
+		err = BatchUpdate(db1, RoleDataUp2C, rolesT)
+		if err != nil {
+			logm.ErrorfE("批量更新角色表失败[%s]", err.Error())
+			return err
+		}
+
+		rolesT = make([]*RoleData, 0)
+		// 输出内存信息
+		PrintStatus("角色表分批保存额外大二进制数据之后" + strconv.Itoa(i))
 	}
 
 	return nil

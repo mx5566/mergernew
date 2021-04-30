@@ -14,7 +14,7 @@ type JimaiItem struct {
 
 func HandleJiMai(db1, db2 *gorm.DB, mapItems map[int64]*ItemEx) error {
 	var jiMaiItems []*JimaiItem
-	err := db2.Select("id, pay_type, money, time").Find(&jiMaiItems).Error
+	err := db2.Table("jimai_item").Select("id, pay_type, money, time").Find(&jiMaiItems).Error
 	if err != nil {
 		return err
 	}
@@ -28,7 +28,7 @@ func HandleJiMai(db1, db2 *gorm.DB, mapItems map[int64]*ItemEx) error {
 		} else {
 			//
 			deleteIndex = append(deleteIndex, key)
-			logm.DebugfE("jiMaiItems[%d] not found in item table", value.ID)
+			logm.ErrorfE("jiMaiItems[%d] not found in item table", value.ID)
 		}
 	}
 
@@ -40,9 +40,12 @@ func HandleJiMai(db1, db2 *gorm.DB, mapItems map[int64]*ItemEx) error {
 
 	// 批量插入被合数据库表item
 	err = BatchSave(db1, JiMaiItemC, jiMaiItems)
+
 	if err != nil {
 		return err
 	}
+
+	jiMaiItems = make([]*JimaiItem, 0)
 
 	return nil
 }

@@ -109,7 +109,17 @@ func HandleAccountCommon(db1, db2 *gorm.DB) error {
 		data := a1[v2.AccountID]
 
 		// 找到对应的数据，数据叠加
-		v2.BaiBaoYuanBao += data.BaiBaoYuanBao
+		// 溢出处理逻辑
+		r1 := uint64(data.BaiBaoYuanBao)
+		r2 := uint64(v2.BaiBaoYuanBao)
+
+		if r1+r2 > uint64(math.MaxInt32) {
+			v2.BaiBaoYuanBao = math.MaxInt32
+		} else {
+			v2.BaiBaoYuanBao += data.BaiBaoYuanBao
+		}
+
+		//v2.BaiBaoYuanBao += data.BaiBaoYuanBao
 		v2.TotalRecharge += data.TotalRecharge
 		v2.YuanBaoRecharge += data.YuanBaoRecharge
 

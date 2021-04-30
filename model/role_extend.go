@@ -12,7 +12,7 @@ type RoleExtend struct {
 func HandleRoleExtend(db1, db2 *gorm.DB) error {
 	var roleExtends []*RoleExtend
 
-	err := db2.Table("enemy").Find(&roleExtends).Error
+	err := db2.Table("role_extend").Find(&roleExtends).Error
 	if err != nil {
 		return err
 	}

@@ -1,23 +1,40 @@
 package route
 
 import (
+	"github.com/gin-contrib/pprof"
+	"github.com/gin-gonic/gin"
+	"github.com/mx5566/mergernew/config"
 	"github.com/mx5566/mergernew/model"
-	"net/http/pprof"
 )
 
 var R = Default()
 
+var GinR = gin.Default()
+
+//http://liumurong.org/2019/12/gin_pprof/
 // register route
-func init() {
+func Init() {
+	if config.Config.Mode == "development" {
+		gin.SetMode(gin.DebugMode)
+	} else {
+		gin.SetMode(gin.ReleaseMode)
+	}
 
-	R.GET("/debug/pprof/", pprof.Index)
-	R.GET("/debug/pprof/cmdline", pprof.Cmdline)
-	R.GET("/debug/pprof/profile", pprof.Profile)
-	R.GET("/debug/pprof/symbol", pprof.Symbol)
-	R.GET("/debug/pprof/trace", pprof.Trace)
+	pprof.Register(GinR) // 性能
+	//R.GET("/debug/pprof/", pprof.Index)
+	//R.GET("/debug/pprof/cmdline", pprof.Cmdline)
+	//R.GET("/debug/pprof/profile", pprof.Profile)
+	//R.GET("/debug/pprof/symbol", pprof.Symbol)
+	//R.GET("/debug/pprof/trace", pprof.Trace)
 
-	R.GET("/h/merger", model.HandlerMerger)
-	R.GET("/h/schedule", model.HandleGetSchedule)
+	//R.GET("/h/merger", model.HandlerMerger)
+	//R.GET("/h/schedule", model.HandleGetSchedule)
+
+	// gin 路由注册
+	GinR.GET("/h/merger", model.HandlerMerger)
+	GinR.GET("/h/schedule", model.HandleGetSchedule)
+	GinR.GET("/h/reset", model.HandleReset)
+
 }
 
 // route

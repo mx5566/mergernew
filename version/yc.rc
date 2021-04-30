@@ -1,0 +1,40 @@
+// yc.rc
+
+#define RT_MANIFEST 24
+
+#include "version.h"
+#include "version_template.h"
+
+#define MAKEVER_S(a,b,c,d) a,b,c,d
+#define MAKEVER(a,b,c,d,e) a.b.c.d.e
+#define STRINGIFY(x) #x
+#define TOSTRING(x) STRINGIFY(x)
+
+1 VERSIONINFO
+PRODUCTVERSION MAKEVER_S(VER_MAJOR, VER_MINOR, VER_PATCH, VER_REVISION)
+FILEVERSION MAKEVER_S(VER_MAJOR, VER_MINOR, VER_PATCH, VER_REVISION)
+
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK  "080403A8"//"040904B0" //
+        BEGIN
+			VALUE "CompanyName", "yc"
+			VALUE "FileDescription", "合区工具"
+			VALUE "FileVersion", TOSTRING(MAKEVER(VER_MAJOR, VER_MINOR, VER_PATCH, VER_REVISION, VER_REVISION_HASH))
+			VALUE "InternalName", "yc"
+			VALUE "LegalCopyright", "Copyright (C) 2021. yc. All Rights Reserved."
+			VALUE "OriginalFilename", "mergernew.exe"
+			VALUE "ProductName", "合区工具"
+			VALUE "ProductVersion", TOSTRING(MAKEVER(VER_MAJOR, VER_MINOR, VER_PATCH, VER_REVISION, VER_REVISION_HASH))
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+            VALUE "Translation", 0x0804, 0x03A8//0x0409, 0x04B0
+    END
+END
+
+1 ICON "yc.ico"
+
+1 RT_MANIFEST "yc.manifest"

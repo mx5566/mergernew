@@ -11,7 +11,7 @@ type Reward struct {
 func HandleReward(db1, db2 *gorm.DB) error {
 	var rewards []*Reward
 
-	err := db2.Table("enemy").Find(&rewards).Error
+	err := db2.Table("reward").Find(&rewards).Error
 	if err != nil {
 		return err
 	}

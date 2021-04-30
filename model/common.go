@@ -5,11 +5,16 @@ import (
 	"context"
 	"fmt"
 	"github.com/mx5566/logm"
+	"github.com/mx5566/mergernew/config"
 	"github.com/panjf2000/ants"
+	"github.com/shirou/gopsutil/v3/process"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 	"math"
+	"net"
+	"os"
 	"runtime"
+	"strings"
 	"sync"
 	"time"
 )
@@ -44,6 +49,8 @@ const (
 	SystemSIC
 	SystemSSC
 	RewardC
+	RoleDataUp1C
+	RoleDataUp2C
 )
 
 // BatchSave 批量插入数据
@@ -110,6 +117,8 @@ func BatchSave(db *gorm.DB, t int, arr interface{}) error {
 			}
 		})
 
+		defer p.Release()
+
 		for i := 0; i < int(count); i++ {
 			end := int(math.Min(float64((i+1)*WanLength), float64(repeatLength)))
 			start := i * WanLength
@@ -133,10 +142,51 @@ func BatchSave(db *gorm.DB, t int, arr interface{}) error {
 	case EquipC:
 		equips := arr.([]*Equip)
 		// 此会话禁用事务
-		err := db.Table("equip").Session(&gorm.Session{PrepareStmt: true, CreateBatchSize: 1000, SkipDefaultTransaction: true}).Create(equips).Error
+		err := db.Table("equip").Session(&gorm.Session{PrepareStmt: true, CreateBatchSize: 1000, SkipDefaultTransaction: true}).Clauses(clause.Insert{Modifier: "IGNORE"}).Create(equips).Error
 		if err != nil {
 			return err
 		}
+
+		//repeatLength := len(equips)
+		//count := math.Ceil(float64(repeatLength) / float64(WanLength))
+		//
+		//var wg sync.WaitGroup
+		//wg.Add(int(count))
+		//// 增加池子来多协程一起去插入数据
+		//// 通过context来控制父子的协程绑定关系
+		//ctx, cancel := context.WithCancel(context.Background())
+		//p, _ := ants.NewPoolWithFunc(runtime.NumCPU()-1, func(i interface{}) {
+		//	defer wg.Done()
+		//
+		//	tempItems := i.([]*Equip)
+		//	err := db.Table("equip").WithContext(ctx).Session(&gorm.Session{PrepareStmt: true, CreateBatchSize: WanLength, SkipDefaultTransaction: true}).Create(tempItems).Error
+		//	if err != nil {
+		//		logm.ErrorfE("batch save equip 1 [%s]", err.Error())
+		//		cancel()
+		//		return
+		//	}
+		//})
+		//
+		//for i := 0; i < int(count); i++ {
+		//	end := int(math.Min(float64((i+1)*WanLength), float64(repeatLength)))
+		//	start := i * WanLength
+		//	err := p.Invoke(equips[start:end])
+		//	if err != nil {
+		//		logm.ErrorfE("batch save equip 2 [%s]", err.Error())
+		//		cancel()
+		//		break
+		//	}
+		//}
+		//
+		//wg.Wait()
+		//
+		//select {
+		//// 出现错误直接返回,手动解除
+		//case <-ctx.Done():
+		//	return ctx.Err()
+		//default:
+		//}
+
 	case RoleDataC:
 		roles := arr.([]*RoleData)
 		// 保存所有的数据到数据库
@@ -161,7 +211,7 @@ func BatchSave(db *gorm.DB, t int, arr interface{}) error {
 	case JiMaiItemC:
 		jiMais := arr.([]*JimaiItem)
 		// save guild_member from b database to a database
-		err := db.Table("jimai_item").Session(&gorm.Session{PrepareStmt: true, CreateBatchSize: 10000, SkipDefaultTransaction: true}).Create(jiMais).Error
+		err := db.Table("jimai_item").Session(&gorm.Session{PrepareStmt: true, CreateBatchSize: 10000, SkipDefaultTransaction: true}).Clauses(clause.Insert{Modifier: "IGNORE"}).Create(jiMais).Error
 		if err != nil {
 			return err
 		}
@@ -314,7 +364,153 @@ func BatchUpdate(db *gorm.DB, t int, arr interface{}, args ...map[string]interfa
 				return err
 			}
 		}
+	case ItemC:
+		///////////////////
+		//1
+		iue := arr.([]*Item)
 
+		//length := len(iue)
+		//
+		//var tempItem = make([]*Item, length)
+		//for k, v := range iue {
+		//	tempItem[k] = new(Item)
+		//
+		//	tempItem[k].Serial = v.Serial
+		//	tempItem[k].StrExternData = v.StrExternData
+		//}
+
+		//arr = nil
+
+		err := db.Table("item").Session(&gorm.Session{PrepareStmt: true, CreateBatchSize: 1000, SkipDefaultTransaction: true}).Clauses(clause.OnConflict{
+			Columns:   []clause.Column{{Name: "serial"}},
+			DoUpdates: clause.AssignmentColumns([]string{"strdwExternData"}),
+		}).Create(iue).Error
+
+		if err != nil {
+			return err
+		}
+	/////////////////////////
+
+	////////////////////////
+	//2
+	//var err1 error
+	//for _, v := range iue {
+	//	err1 = db.Exec("update item set strdwExternData=? where serial=?;", v.StrExternData, v.Serial).Error
+	//	if err1 != nil {
+	//		return err1
+	//	}
+	//}
+
+	////////////////////////
+	//3
+	//var buffer bytes.Buffer
+	//
+	//BaseLength := 1000
+	//repeatLength := len(iue)
+	//count := math.Ceil(float64(repeatLength) / float64(BaseLength))
+	//
+	//// 对于存在的账号数据叠加
+	//for i := 0; i < int(count); i++ {
+	//	var tempArr []interface{}
+	//	buffer.Reset()
+	//
+	//	end := int(math.Min(float64((i+1)*BaseLength), float64(repeatLength)))
+	//	start := i * BaseLength
+	//
+	//	for j := start; j < end; j++ {
+	//		buffer.WriteString("update item set strdwExternData=? where serial=?;")
+	//
+	//		tempArr = append(tempArr, iue[j].StrExternData, iue[j].Serial)
+	//		//db.Exec("update item set strdwExternData = ? where serial = ?", iue[j].StrExternData, iue[j].Serial)
+	//
+	//	}
+	//
+	//	str := buffer.String()
+	//
+	//	fmt.Println("批量更新 字节长度 item: ", len(str), "byte")
+	//
+	//	// 批量更新item
+	//	err := db.Exec(str, tempArr...).Error
+	//	if err != nil {
+	//		return err
+	//	}
+	//}
+
+	case EquipC:
+		iue := arr.([]*EquipEx)
+
+		length := len(iue)
+
+		var tempEquip = make([]*Equip, length)
+		for k, v := range iue {
+			tempEquip[k] = new(Equip)
+
+			tempEquip[k].Serial = v.Serial
+			tempEquip[k].EquipExAtt = v.EquipExAtt
+			tempEquip[k].EquipAddAtt = v.EquipAddAtt
+		}
+
+		arr = nil
+
+		runtime.GC()
+
+		err := db.Table("equip").Session(&gorm.Session{PrepareStmt: true, CreateBatchSize: 1000, SkipDefaultTransaction: true}).Clauses(clause.OnConflict{
+			Columns:   []clause.Column{{Name: "serial"}},
+			DoUpdates: clause.AssignmentColumns([]string{"equip_ex_att", "equip_add_att"}),
+		}).Create(tempEquip).Error
+
+		if err != nil {
+			return err
+		}
+
+	case RoleDataUp2C:
+		iue := arr.([]*RoleData)
+
+		err := db.Table("role_data").Session(&gorm.Session{PrepareStmt: true, CreateBatchSize: 200, SkipDefaultTransaction: true}).Clauses(clause.OnConflict{
+			Columns:   []clause.Column{{Name: "role_id"}},
+			DoUpdates: clause.AssignmentColumns([]string{"script_data", "role_help", "key_info", "strdwExternData", "extern_data2"}),
+		}).Create(iue).Error
+
+		if err != nil {
+			return err
+		}
+	case RoleDataUp1C:
+		//iue := arr.([]*RoleData)
+		//
+		//err := db.Table("role_data").Session(&gorm.Session{PrepareStmt: true, CreateBatchSize: 200, SkipDefaultTransaction: true}).Clauses(clause.OnConflict{
+		//	Columns:   []clause.Column{{Name: "role_id"}},
+		//	DoUpdates: clause.AssignmentColumns([]string{""}),
+		//}).Create(iue).Error
+		//
+		//if err != nil {
+		//	return err
+		//}
+		rd := arr.([]*RoleData)
+
+		var buffer bytes.Buffer
+
+		repeatLength := len(rd)
+		count := math.Ceil(float64(repeatLength) / float64(20000))
+
+		// 对于存在的账号数据叠加
+		for i := 0; i < int(count); i++ {
+			buffer.Reset()
+
+			end := int(math.Min(float64((i+1)*20000), float64(repeatLength)))
+			start := i * 20000
+			for j := start; j < end; j++ {
+				buffer.WriteString(fmt.Sprintf("update role_data set role_name='%s', rofbid_flag=%d, role_name_origin='%s' where role_id=%d;",
+					rd[j].RoleName, rd[j].RofbidFlag, rd[j].RoleNameOrigin, rd[j].RoleID))
+			}
+
+			str := buffer.String()
+			fmt.Println("批量更新 字节长度 role_data: ", len(str), "byte")
+			// 批量更新account_common
+			err := db.Exec(str).Error
+			if err != nil {
+				return err
+			}
+		}
 	}
 
 	return nil
@@ -326,8 +522,26 @@ type ItemEx struct {
 	Source  string `gorm:"size(100);column:source"`
 }
 
+type ItemUpEx struct {
+	Serial        int64  `gorm:"primary_key;column:serial"`
+	StrExternData []byte `gorm:"column:strdwExternData"`
+}
+
+type EquipEx struct {
+	Serial      int64  `gorm:"primary_key;column:serial"`
+	EquipExAtt  []byte `gorm:"column:equip_ex_att"`
+	EquipAddAtt []byte `gorm:"column:equip_add_att"`
+}
+
 type MailEx struct {
 	MailID uint32 `gorm:"primary_key;column:mail_id"`
+}
+
+type RoleDataEx struct {
+	RoleID         uint32 `gorm:"primary_key;column:role_id"`
+	RoleName       string `gorm:"not null;type:varchar(32);column:role_name"`
+	RofbidFlag     int8   `gorm:"not null;column:rofbid_flag"`
+	RoleNameOrigin string `gorm:"column:role_name_origin;char(32)"`
 }
 
 // 根据时区转换为对应格式的时间字符串
@@ -384,4 +598,76 @@ func StrToTimeStamp(str string) (int64, error) {
 // item_del10110	0	item_del表数据合并耗时统计10110 merge_log [192.168.1.137 ]	合并成功	2021-01-05 08:56:00
 func InsertMergerLog(err, errmsg, sqlexeeption string, batchid int) {
 	GDB1.Exec("insert into merger_log(err_log, batchid, errmsg, sqlexeeption, create_time) values(?, ?, ?, ?, ?);", err, batchid, errmsg, sqlexeeption, TimeToTime(time.Now()))
+}
+
+// 检测是不是有效的IP
+func ParseIP(s string) (net.IP, int) {
+	ip := net.ParseIP(s)
+	if ip == nil {
+		return nil, 0
+	}
+	for i := 0; i < len(s); i++ {
+		switch s[i] {
+		case '.':
+			return ip, 4
+		case ':':
+			return ip, 6
+		}
+	}
+	return nil, 0
+}
+
+func IsValidIp4(s string) bool {
+	_, n := ParseIP(s)
+
+	if n != 4 {
+		return false
+	}
+
+	return true
+}
+
+func MysqlRealEscapeString(value string) string {
+	replace := map[string]string{
+		"\\":   "\\\\",
+		"'":    `\'`,
+		"\\0":  "\\\\0",
+		"\r":   "\\",
+		"\n":   "\\",
+		`"`:    `\"`,
+		"\x1a": "\\Z",
+	}
+
+	for b, a := range replace {
+		value = strings.Replace(value, b, a, -1)
+	}
+
+	return value
+}
+
+func PrintStatus(exMsg string) {
+	if !config.Config.OpenMem {
+		return
+	}
+
+	pid := os.Getpid()
+
+	pro, err := process.NewProcess(int32(pid))
+	if err != nil {
+		return
+	}
+
+	stat, err := pro.MemoryInfo()
+	if err != nil {
+		return
+	}
+
+	str := fmt.Sprintf(exMsg+" 内存指标数据 rss[%d]mb vms[%d]mb", stat.RSS/1024/1024, stat.VMS/1024/1024)
+
+	logm.InfofE(str)
+}
+
+func SetLastMergerInfo(ip string, tt int64) {
+	LastMergerIp = ip
+	LastMergerTime = tt
 }

@@ -76,7 +76,7 @@ func HandleGuildRelation(db1, db2 *gorm.DB, roles1 []*RoleData, lengthRole /*这
 	guilds2 := make([]*Guild, 0)
 
 	// load guild
-	err := db1.Table("guild").Find(&guilds1).Error
+	err := db1.Table("guild").Order("id asc").Find(&guilds1).Error
 	if err != nil {
 		return err
 	}
@@ -103,13 +103,15 @@ func HandleGuildRelation(db1, db2 *gorm.DB, roles1 []*RoleData, lengthRole /*这
 
 	logm.DebugfE("guild lastID [%d]", lastID)
 
+	length2 := len(guilds2)
 	//
 	guilds1 = append(guilds1, guilds2...)
 
+	guilds2 = make([]*Guild, 0)
 	// key preID value afterID
 	mapOldNewGuildID := make(map[uint64]uint64)
 	// 遍历guilds1从最初的最后一个值+1开始
-	if len(guilds2) > 0 {
+	if length2 > 0 {
 		for index, _ := range guilds1[length:] {
 			lastID++
 
@@ -154,10 +156,11 @@ func HandleGuildRelation(db1, db2 *gorm.DB, roles1 []*RoleData, lengthRole /*这
 	var count = 0
 	for _, value := range deleteIndex {
 		guildMembers2 = append(guildMembers2[0:value-count], guildMembers2[value+1-count:]...)
+		count++
 	}
 
 	// batch save guild
-	if len(guilds2) > 0 {
+	if length2 > 0 {
 		err = BatchSave(db1, GuildC, guilds1[length:])
 		if err != nil {
 			return err

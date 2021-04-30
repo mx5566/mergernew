@@ -3,30 +3,15 @@ package model
 import (
 	"fmt"
 	"gorm.io/driver/mysql"
+	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 	"gorm.io/gorm/schema"
 	"time"
-
-	"gorm.io/gorm"
 )
 
+// 本机的连接
 var GDB1 *gorm.DB
-var GDB2 *gorm.DB
 var GDB3 *gorm.DB
-var GDB4 *gorm.DB
-
-var (
-	DBType        = "mysql"
-	DBUser        = "root"
-	DBPasswd      = "123456"
-	DBHost1       = "127.0.0.1"
-	DBHost2       = "127.0.0.1"
-	DBNameA       = "game1"
-	DBNameB       = "game2"
-	DBNameC       = "information_schema"
-	DBNameD       = "information_schema"
-	DBTablePrefix = ""
-)
 
 func NewDB(user, password, host, dbname, tablePrefix string) (*gorm.DB, error) {
 	var err error
@@ -53,9 +38,11 @@ func NewDB(user, password, host, dbname, tablePrefix string) (*gorm.DB, error) {
 		return nil, err
 	}
 
-	sqlDB.SetMaxIdleConns(10)
-	sqlDB.SetMaxOpenConns(100)
-	sqlDB.SetConnMaxLifetime(time.Hour)
+	//defer sqlDB.Close()
+
+	sqlDB.SetMaxIdleConns(0)
+	//sqlDB.SetMaxOpenConns(100)
+	sqlDB.SetConnMaxLifetime(time.Minute * 30)
 
 	return db, nil
 }

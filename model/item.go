@@ -2,8 +2,12 @@ package model
 
 import (
 	"database/sql"
+	"fmt"
 	"github.com/mx5566/logm"
 	"gorm.io/gorm"
+	"math"
+	"runtime"
+	"strconv"
 	"time"
 )
 
@@ -55,7 +59,7 @@ type Item struct {
 	ScriptData1     uint32         `gorm:"column:script_data1;not null"`
 	ScriptData2     uint32         `gorm:"column:script_data2;not null"`
 	CreateBind      int8           `gorm:"column:create_bind;not null"`
-	StrExternData   []byte         `gorm:"column:strdwExternData"`
+	StrExternData   []byte         `gorm:"type:bytes;column:strdwExternData"`
 	ItenOld         sql.NullInt64  `gorm:"column:item_old"`
 	Source          sql.NullString `gorm:"size(100);column:source"`
 }
@@ -64,7 +68,7 @@ func (m *Item) TableName() string {
 	return "item"
 }
 
-func HandleItemRelation(db1, db2 *gorm.DB, increaseNum uint32, mapMailIDs map[uint32]uint32) error {
+func HandleItemRelation(db1, db2, db3 *gorm.DB, increaseNum uint32, mapMailIDs map[uint32]uint32) error {
 	//err := db1.Exec("ALTER TABLE item MODIFY serial BIGINT(21)  AUTO_INCREMENT;").Error
 	//if err != nil {
 	//	return err
@@ -93,18 +97,26 @@ func HandleItemRelation(db1, db2 *gorm.DB, increaseNum uint32, mapMailIDs map[ui
 		startID = MAXItemID
 	}
 
-	t1 := time.Now().Unix()
 	t2 := time.Now().Unix()
-	delta := t2 - t1
+	delta := t2 - CurrentTime
+	t1 := time.Now().Unix()
 
 	SetCurrent(Stage_31, "", delta)
+	// 输出内存信息
+	PrintStatus("物品表加载物品数据之前")
+
 	var items []*Item
-	err = db2.Select("serial, num, type_id, bind, lock_state, use_times, first_gain_time, create_mode, create_id, creator_id, create_time, owner_id, account_id, container_type_id, suffix, name_id, bind_time, script_data1, script_data2, create_bind, strdwExternData, item_old, source").Find(&items).Error
+	// 忽略了 strdwExternData字段 因为内存占用太大了 妈的比
+	err = db2.Select("serial, num, type_id, bind, lock_state, use_times, first_gain_time, create_mode, create_id, creator_id, create_time, owner_id, account_id, container_type_id, suffix, name_id, bind_time, script_data1, script_data2, create_bind, item_old, source").Find(&items).Error
 	if err != nil {
 		return err
 	}
 	t2 = time.Now().Unix()
 	delta = t2 - t1
+	t1 = time.Now().Unix()
+	// 输出内存信息
+	PrintStatus("物品表加载物品之后")
+
 	logm.DebugfE("handle select item delta[%d] start-item-id[%d]", delta, startID)
 
 	// 遍历所有的物品
@@ -126,7 +138,7 @@ func HandleItemRelation(db1, db2 *gorm.DB, increaseNum uint32, mapMailIDs map[ui
 
 		// 把所有8的 好像是礼包
 		if value.CreateNode == 8 {
-			items[index].CreateID += increaseNum
+			items[index].CreateID = items[index].OwnerID
 		}
 
 		vv := new(ItemEx)
@@ -142,41 +154,10 @@ func HandleItemRelation(db1, db2 *gorm.DB, increaseNum uint32, mapMailIDs map[ui
 	}
 	t2 = time.Now().Unix()
 	delta = t2 - t1
+
 	logm.DebugfE("handle item memory handle ... time[%d]", delta)
 
 	SetCurrent(Stage_40, "", delta)
-	// handle equip
-	err = HandleEquip(db1, db2, mapItems)
-	if err != nil {
-		return err
-	}
-	t2 = time.Now().Unix()
-	delta = t2 - CurrentTime
-	logm.DebugfE("handle equip batch save ... time[%d]", delta)
-
-	SetCurrent(Stage_50, "", delta)
-	//
-	// handle jimai_item
-	err = HandleJiMai(db1, db2, mapItems)
-	if err != nil {
-		return err
-	}
-	t2 = time.Now().Unix()
-	delta = t2 - CurrentTime
-	logm.DebugfE("handle jimai batch save ... time[%d]", delta)
-
-	SetCurrent(Stage_60, "", delta)
-	//
-	// handle mail item
-	err = HandleMailItem(db1, db2, mapItems, mapMailIDs)
-	if err != nil {
-		return err
-	}
-	t2 = time.Now().Unix()
-	delta = t2 - CurrentTime
-	logm.DebugfE("handle mail item batch save ... time[%d]", delta)
-
-	SetCurrent(Stage_70, "", delta)
 	for k1, _ := range items {
 		// 对于null值的处理方式
 		items[k1].ItenOld.Valid = false
@@ -185,15 +166,41 @@ func HandleItemRelation(db1, db2 *gorm.DB, increaseNum uint32, mapMailIDs map[ui
 		items[k1].Source.String = ""
 	}
 
-	dropTime := time.Now().Unix()
-	// 删除item的所有索引
-	err = db1.Exec("drop index owner_id on item;drop index account_id on item;drop index container_type_id on item;").Error
+	dd := time.Now().Unix()
+	///////////////////
+	var target_database = db1.Migrator().CurrentDatabase()
+	var target_table_name = "item"
+	var c int64 = 0
+	// 计算个数
+	err = db3.Table("statistics").Where("index_schema = ? and table_name = ? and index_name = ?", target_database, target_table_name, "account_id").Select("count(*) as count").Count(&c).Error
 	if err != nil {
 		return err
 	}
 
+	if c > 0 {
+		// 删除account_id的索引、这个索引没啥用
+		str := fmt.Sprintf("drop index account_id on item;")
+		err = db1.Exec(str).Error
+		if err != nil {
+			return err
+		}
+	}
+
+	///////////////////
+
+	// 删除item的所有索引
+	//err = db1.Exec("drop index owner_id on item;drop index account_id on item;drop index container_type_id on item;").Error
+	//if err != nil {
+	//	return err
+	//}
+	//
 	t2 = time.Now().Unix()
-	delta = t2 - dropTime
+	delta = t2 - dd
+	dd = time.Now().Unix()
+
+	// 输出内存信息
+	PrintStatus("物品表保存数据之前")
+
 	logm.DebugfE("drop item index  ... time[%d]", delta)
 
 	// 保存之前需要把所有的item_old 和source字段设置为空
@@ -203,15 +210,133 @@ func HandleItemRelation(db1, db2 *gorm.DB, increaseNum uint32, mapMailIDs map[ui
 		return err
 	}
 	t2 = time.Now().Unix()
-	delta = t2 - CurrentTime
+	delta = t2 - dd
+	dd = time.Now().Unix()
+
+	// 输出内存信息
+	PrintStatus("物品表保存数据之后")
 	logm.DebugfE("handle item save ... time[%d] start[%s]", delta, TimeToStr(time.Now()))
 
-	// add index item
-	err = db1.Exec("CREATE INDEX  owner_id on item (owner_id); CREATE INDEX  account_id on item (account_id, container_type_id);CREATE INDEX  container_type_id on item (container_type_id);").Error
+	items = make([]*Item, 0)
+
+	runtime.GC()
+
+	// handle equip
+	SetCurrent(Stage_50, "", delta)
+	// handle equip
+	err = HandleEquip(db1, db2, mapItems)
 	if err != nil {
 		return err
 	}
-	logm.DebugfE("create index item ... time[%d] ", time.Now().Unix()-t2)
+	t2 = time.Now().Unix()
+	delta = t2 - CurrentTime
+
+	logm.DebugfE("handle equip batch save ... time[%d]", delta)
+
+	SetCurrent(Stage_60, "", delta)
+
+	runtime.GC()
+
+	//
+	// handle jimai_item
+	err = HandleJiMai(db1, db2, mapItems)
+	if err != nil {
+		return err
+	}
+	t2 = time.Now().Unix()
+	delta = t2 - CurrentTime
+
+	logm.DebugfE("handle jimai batch save ... time[%d]", delta)
+
+	SetCurrent(Stage_70, "", delta)
+	//
+	// handle mail item
+	err = HandleMailItem(db1, db2, mapItems, mapMailIDs)
+	if err != nil {
+		return err
+	}
+	t2 = time.Now().Unix()
+	delta = t2 - CurrentTime
+	dd = time.Now().Unix()
+
+	logm.DebugfE("handle mail item batch save ... time[%d]", delta)
+
+	// 触发GC
+	runtime.GC()
+
+	// 输出内存信息
+	PrintStatus("物品表保存物品额外二进制大数据之前")
+	// 处理远程数据库的 物品表字段strdwExternData 字段大小太大了 太占用内存了需要分段处理 、
+	// 现在的策略是n万作为基准去加载到内存里面 然后在更新到本地的物品表里面
+	// 分段批量更新
+	err = HandleItemExData(db1, db2, mapItems)
+	if err != nil {
+		return err
+	}
+	t2 = time.Now().Unix()
+	delta = t2 - dd
+
+	// 输出内存信息
+	PrintStatus("物品表保存物品二进制大数据之后")
+	logm.DebugfE("handle item exdata ... time[%d] start[%s]", delta, TimeToStr(time.Now()))
+
+	mapItems = make(map[int64]*ItemEx)
+
+	// 触发GC
+	runtime.GC()
+	// add index item
+	//err = db1.Exec("CREATE INDEX  owner_id on item (owner_id); CREATE INDEX  account_id on item (account_id, container_type_id);CREATE INDEX  container_type_id on item (container_type_id);").Error
+	//if err != nil {
+	//	return err
+	//}
+	//logm.DebugfE("create index item ... time[%d] ", time.Now().Unix()-t2)
+
+	return nil
+}
+
+func HandleItemExData(db1, db2 *gorm.DB, mapItems map[int64]*ItemEx) error {
+	// 先计算物品的个数
+	// 不利用主键去count 利用第二索引去count
+	var c1 int64 = 0
+	err := db2.Table("item").Select("count(container_type_id) as count").Where("container_type_id > ?", 0).Count(&c1).Error
+	if err != nil {
+		logm.ErrorfE("查找远程表物品个数失败[%s]", err.Error())
+		return err
+	}
+
+	base := 100000
+	count := math.Ceil(float64(c1) / float64(base))
+
+	for i := 0; i < int(count); i++ {
+		PrintStatus("物品表分批保存额外二进制大数据之前" + strconv.Itoa(i))
+		var items []*Item
+		// 单独查找strdwExternData
+		err = db2.Table("item").Select("serial, strdwExternData").Offset(i * base).Limit(base).Find(&items).Error
+		if err != nil {
+			return err
+		}
+
+		for key, value := range items {
+			if v, ok := mapItems[value.Serial]; ok {
+				// 替换成新的ID
+				items[key].Serial = v.Serial
+			}
+			// else 理论不会出现
+		}
+
+		err = BatchUpdate(db1, ItemC, items)
+		if err != nil {
+			logm.ErrorfE("批量更新物品表失败[%s]", err.Error())
+			return err
+		}
+
+		PrintStatus("物品表分批保存额外二进制大数据之后" + strconv.Itoa(i))
+
+		items = make([]*Item, 0)
+		// 触发GC
+		runtime.GC()
+
+	}
 
 	return nil
 }
