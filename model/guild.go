@@ -71,7 +71,7 @@ type GuildMember struct {
 }
 
 // 和角色数据一起处理
-func HandleGuildRelation(db1, db2 *gorm.DB, roles1 []*RoleData, lengthRole /*这个是roles1合并数据之前的长度*/ int) error {
+func HandleGuildRelation(db1, db2 *gorm.DB, roles1 []*RoleData, lengthRole /*这个是roles1合并数据之前的长度*/ int, mapRoleIds map[uint32]uint32) error {
 	guilds1 := make([]*Guild, 0)
 	guilds2 := make([]*Guild, 0)
 
@@ -87,8 +87,14 @@ func HandleGuildRelation(db1, db2 *gorm.DB, roles1 []*RoleData, lengthRole /*这
 		return err
 	}
 
+	guildMembers1 := make([]*GuildMember, 0)
 	guildMembers2 := make([]*GuildMember, 0)
+
 	// load guild member
+	err = db1.Table("guild_member").Find(&guildMembers1).Error
+	if err != nil {
+		return err
+	}
 
 	err = db2.Table("guild_member").Find(&guildMembers2).Error
 	if err != nil {
@@ -159,22 +165,160 @@ func HandleGuildRelation(db1, db2 *gorm.DB, roles1 []*RoleData, lengthRole /*这
 		count++
 	}
 
-	// batch save guild
-	if length2 > 0 {
-		err = BatchSave(db1, GuildC, guilds1[length:])
-		if err != nil {
-			return err
+	t1 := time.Now().Unix()
+	////////////////////////////////////////////////////////////////
+	// 需要解散的工会逻辑处理
+	needDismiss := make(map[uint64]uint64)
+	deleteIndex = make([]int, 0)
+	// 遍历找出所有需要delete掉的工会
+	for i, value := range guilds1 {
+		if _, ok := mapRoleIds[value.LeaderID]; ok {
+			// 此工会要解散
+			needDismiss[value.ID] = value.ID
+
+			deleteIndex = append(deleteIndex, i)
+			logm.WarnfE("10此工会因为合并把角色隐藏导致身上的工会需要解散掉 ID[%d]", value.ID)
 		}
 	}
 
-	// batch save guild member
-	err = BatchSave(db1, GuildMemberC, guildMembers2)
+	// 删除没必要的工会
+	count = 0
+	for _, value := range deleteIndex {
+		guilds1 = append(guilds1[0:value-count], guilds1[value+1-count:]...)
+		count++
+	}
+
+	// 遍历工会成员表的数据
+	deleteIndex = make([]int, 0)
+	for key, value := range guildMembers1 {
+		if _, ok := mapRoleIds[value.RoleID]; ok {
+			deleteIndex = append(deleteIndex, key)
+
+			logm.WarnfE("20此角色因为合区角色被隐藏了,需要从工会成员里面删除掉 roleID[%d] guildID[%d]", value.RoleID, value.GuildID)
+			continue
+		}
+
+		// 如果上面不存在 在看看在不在解散的工会里面，在里面也删掉
+		if _, ok := needDismiss[uint64(value.GuildID)]; ok {
+			deleteIndex = append(deleteIndex, key)
+
+			logm.WarnfE("30此角色因为合区导致会长的角色隐藏工会解散掉了,需要从工会成员里面删除掉 roleID[%d] guildID[%d]", value.RoleID, value.GuildID)
+		}
+	}
+	count = 0
+	for _, value := range deleteIndex {
+		guildMembers1 = append(guildMembers1[0:value-count], guildMembers1[value+1-count:]...)
+		count++
+	}
+
+	deleteIndex = make([]int, 0)
+	for key, value := range guildMembers2 {
+		if _, ok := mapRoleIds[value.RoleID]; ok {
+			deleteIndex = append(deleteIndex, key)
+
+			logm.WarnfE("40此角色因为合区角色被隐藏了,需要从工会成员里面删除掉 roleID[%d] guildID[%d]", value.RoleID, value.GuildID)
+			continue
+		}
+
+		// 如果上面不存在 在看看在不在解散的工会里面，在里面也删掉
+		if _, ok := needDismiss[uint64(value.GuildID)]; ok {
+			deleteIndex = append(deleteIndex, key)
+
+			logm.WarnfE("50此角色因为合区导致会长的角色隐藏工会解散掉了,需要从工会成员里面删除掉 roleID[%d] guildID[%d]", value.RoleID, value.GuildID)
+		}
+	}
+
+	count = 0
+	for _, value := range deleteIndex {
+		guildMembers2 = append(guildMembers2[0:value-count], guildMembers2[value+1-count:]...)
+		count++
+	}
+
+	// 连接起来
+	guildMembers1 = append(guildMembers1, guildMembers2...)
+
+	guildMembers2 = make([]*GuildMember, 0)
+
+	// 遍历角色清理身上的工会信息
+	for key, _ := range roles1 {
+		if roles1[key].GuildID == 4294967295 {
+			continue
+		}
+
+		if _, ok := mapRoleIds[roles1[key].RoleID]; ok {
+			logm.WarnfE("60因为合区导致角色被隐藏了，需要清理身上的工会信息 roleID[%d] guildID[%d]", roles1[key].RoleID, roles1[key].GuildID)
+			roles1[key].GuildID = 4294967295
+			continue
+		}
+
+		if _, ok := needDismiss[uint64(roles1[key].GuildID)]; ok {
+			logm.WarnfE("70因为合区导致工会会长被隐藏了，工会解散了，需要清理身上的工会信息 roleID[%d] guildID[%d]", roles1[key].RoleID, roles1[key].GuildID)
+			roles1[key].GuildID = 4294967295
+		}
+	}
+
+	logm.DebugfE("处理清理工会信息耗时 耗时[%d]", time.Now().Unix()-t1)
+
+	// 保存开始
+	err = BatchGuildSave(db1, guilds1)
 	if err != nil {
 		return err
 	}
 
+	err = BatchGuildMemberSave(db1, guildMembers1)
+	if err != nil {
+		return err
+	}
+
+	////////////////////////////////////////////////////////////////
+
+	/*
+		// batch save guild
+		if length2 > 0 {
+			err = BatchSave(db1, GuildC, guilds1[length:])
+			if err != nil {
+				return err
+			}
+		}
+
+		// batch save guild member
+		err = BatchSave(db1, GuildMemberC, guildMembers2)
+		if err != nil {
+			return err
+		}
+	*/
 	// nil
 	// 预定义的标识符
 	// 代表一些类型 变量的零值
+	return nil
+}
+
+func BatchGuildSave(db1 *gorm.DB, guilds []*Guild) error {
+	// 先清理1中的数据
+	err := db1.Exec("truncate table guild;").Error
+	if err != nil {
+		return err
+	}
+
+	err = BatchSave(db1, GuildC, guilds)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func BatchGuildMemberSave(db1 *gorm.DB, guildsMem []*GuildMember) error {
+	// 先清理1中的member
+	err := db1.Exec("truncate table guild_member;").Error
+	if err != nil {
+		return err
+	}
+
+	err = BatchSave(db1, GuildMemberC, guildsMem)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }

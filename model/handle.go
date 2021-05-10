@@ -16,6 +16,7 @@ var Total = 23
 var IsStart = false
 var Err = ""
 var CurrentTime = time.Now().Unix()
+var StartTime = time.Now().Unix()
 
 var LastMergerTime = time.Now().Unix()
 var LastMergerIp = ""
@@ -114,7 +115,7 @@ func SetCurrent(s, err string, delta int64) {
 		}
 
 		if s == Stage_Success {
-			InsertMergerLog(CurrentStage, err+"["+mConfig.DBHost2+"]", "合并成功", int(delta))
+			InsertMergerLog(s, err+"["+mConfig.DBHost2+"]", "合并成功", int(CurrentTime-StartTime))
 		}
 
 		CurrentStage = s
@@ -169,6 +170,7 @@ func Handle() error {
 
 	t1 := time.Now().Unix()
 	t2 := time.Now().Unix()
+	StartTime = time.Now().Unix()
 
 	logm.InfofE("数据合并开始...")
 
@@ -268,7 +270,8 @@ func Handle() error {
 	dd = time.Now().Unix()
 	logm.DebugfE("处理物品相关的结束... time[%d]", delta)
 
-	err = HandleRoleData(GDB1, gdb2, GDB3, gdb4)
+	mapRoleIDsRf := make(map[uint32]uint32)
+	err = HandleRoleData(GDB1, gdb2, GDB3, gdb4, mapRoleIDsRf)
 	if err != nil {
 		return err
 	}
@@ -278,7 +281,7 @@ func Handle() error {
 	logm.DebugfE("处理角色表相关结束... time[%d]", delta)
 
 	SetCurrent(Stage_100, "", delta)
-	err = HandleBlackList(GDB1, gdb2)
+	err = HandleBlackList(GDB1, gdb2, mapRoleIDsRf)
 	if err != nil {
 		return err
 	}
@@ -298,7 +301,7 @@ func Handle() error {
 	logm.DebugfE("处理buff表结束... time[%d]", delta)
 
 	SetCurrent(Stage_120, "", delta)
-	err = HandleEnemy(GDB1, gdb2)
+	err = HandleEnemy(GDB1, gdb2, mapRoleIDsRf)
 	if err != nil {
 		return err
 	}
@@ -308,7 +311,7 @@ func Handle() error {
 	logm.DebugfE("处理敌人表结束... time[%d]", delta)
 
 	SetCurrent(Stage_130, "", delta)
-	err = HandleFriend(GDB1, gdb2)
+	err = HandleFriend(GDB1, gdb2, mapRoleIDsRf)
 	if err != nil {
 		return err
 	}
@@ -397,7 +400,7 @@ func Handle() error {
 
 	logm.DebugfE("处理系统变量表结束... time[%d]", delta)
 
-	SetCurrent(Stage_Success, "", t2-t1)
+	SetCurrent(Stage_Success, "", delta)
 
 	SetLastMergerInfo(config.Config.Mysql.DBHost2, time.Now().Unix())
 	//
@@ -407,11 +410,12 @@ func Handle() error {
 }
 
 type Result struct {
-	Code  int    `json:"code"`
-	Msg   string `json:"msg"`
-	Total int    `json:"total"`
-	Phase int    `json:"phase"`
-	Err   string `json:"err"`
+	Code    int    `json:"code"`
+	Msg     string `json:"msg"`
+	Total   int    `json:"total"`
+	Phase   int    `json:"phase"`
+	Err     string `json:"err"`
+	IsStart bool   `json:"start"`
 }
 
 // http://192.168.16.250:5050/h/merger?ip=127.0.0.1
@@ -425,11 +429,12 @@ func HandlerMerger(c *gin.Context) {
 	isValid := IsValidIp4(ip)
 	if !isValid {
 		result := Result{
-			Code:  999,
-			Msg:   "无效的IPv4地址[" + ip + "]",
-			Err:   "检测IPv4地址",
-			Total: Total,
-			Phase: Count,
+			Code:    999,
+			Msg:     "无效的IPv4地址[" + ip + "]",
+			Err:     "检测IPv4地址",
+			Total:   Total,
+			Phase:   Count,
+			IsStart: IsStart,
 		}
 
 		logm.DebugfE("无效的IPv4地址 ip[%s]", ip)
@@ -444,11 +449,12 @@ func HandlerMerger(c *gin.Context) {
 	// 已经开始
 	if IsStart {
 		result := Result{
-			Code:  999,
-			Msg:   "合并任务正在进行中请稍作等待",
-			Err:   "合并已经开始",
-			Total: Total,
-			Phase: Count,
+			Code:    999,
+			Msg:     "合并任务正在进行中请稍作等待",
+			Err:     "合并已经开始",
+			Total:   Total,
+			Phase:   Count,
+			IsStart: IsStart,
 		}
 
 		logm.DebugfE("合并任务正在进行中，重复的请求 ip[%s]", config.Config.Mysql.DBHost2)
@@ -460,6 +466,7 @@ func HandlerMerger(c *gin.Context) {
 
 	// 初始化远程IP
 	config.Config.Mysql.DBHost2 = ip
+	IsStart = true
 
 	result := Result{
 		Code:  200,
@@ -480,12 +487,12 @@ func HandlerMerger(c *gin.Context) {
 
 			result.Code = 999
 			result.Msg = "find panic error"
+			result.IsStart = IsStart
 
 			c.JSON(http.StatusOK, &result)
 		}
 	}()
 
-	IsStart = true
 	err := Handle()
 
 	if err != nil {
@@ -497,11 +504,14 @@ func HandlerMerger(c *gin.Context) {
 		result.Err = Err
 		result.Total = Total
 		result.Phase = Count
+		result.IsStart = IsStart
 
 		logm.ErrorfE("合区出错了 err[%s]", err.Error())
 	} else {
 		//IsStart = false
 		Reset()
+
+		result.IsStart = IsStart
 
 		logm.DebugfE("合区成功了恭喜你")
 	}
@@ -521,6 +531,7 @@ func HandleGetSchedule(c *gin.Context) {
 	result.Total = Total
 	result.Phase = Count
 	result.Err = Err
+	result.IsStart = IsStart
 
 	// 返回json数据
 	c.JSON(http.StatusOK, &result)

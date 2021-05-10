@@ -198,10 +198,24 @@ func (s SortRoleData) Swap(i, j int) {
 }
 
 func (s SortRoleData) Less(i, j int) bool {
-	return s[i].Level > s[j].Level && s[i].TotalTax > s[j].TotalTax && s[i].CreateTime < s[j].CreateTime
+	if s[i].Level > s[j].Level {
+		return true
+	} else {
+		if s[i].Level == s[j].Level {
+			if s[i].TotalTax > s[j].TotalTax {
+				return true
+			} else if s[i].TotalTax == s[j].TotalTax {
+				if s[i].CreateTime < s[j].CreateTime {
+					return true
+				}
+			}
+		}
+	}
+
+	return false
 }
 
-func HandleRoleData(db1, db2, db3, db4 *gorm.DB) error {
+func HandleRoleData(db1, db2, db3, db4 *gorm.DB, mapRoleIDsRf map[uint32]uint32) error {
 	// 输出内存信息
 	PrintStatus("角色表加载角色数据之前")
 	var roles1 []*RoleData
@@ -212,7 +226,7 @@ func HandleRoleData(db1, db2, db3, db4 *gorm.DB) error {
 	SetCurrent(Stage_71, "", delta)
 
 	err := db1.Table("role_data").Select("account_id, role_id, role_name, total_tax, remove_flag, level," +
-		"create_time, rofbid_flag, role_name_origin").Find(&roles1).Error
+		"create_time, rofbid_flag, role_name_origin, guild_id").Find(&roles1).Error
 	if err != nil {
 		return err
 	}
@@ -247,6 +261,8 @@ func HandleRoleData(db1, db2, db3, db4 *gorm.DB) error {
 
 	// 输出内存信息
 	PrintStatus("角色表加载角色数据之后")
+	// 记录下来所有RofbidFlag == 2 和 == 1 的角色id
+
 	//length := len(roles1)
 	// 内存执行效率还是高
 	// 把没有初始化的名字全部初始化
@@ -260,6 +276,8 @@ func HandleRoleData(db1, db2, db3, db4 *gorm.DB) error {
 
 		if roles1[key].RofbidFlag <= 1 {
 			roles1[key].RofbidFlag = 0
+		} else {
+			mapRoleIDsRf[value.RoleID] = value.RoleID
 		}
 	}
 
@@ -276,10 +294,6 @@ func HandleRoleData(db1, db2, db3, db4 *gorm.DB) error {
 		if roles2[key].RofbidFlag <= 1 {
 			roles2[key].RofbidFlag = 0
 		}
-
-		//if value.ExternData2 == nil {
-		//
-		//}
 	}
 
 	// 最初的roles1的角色个数， 用来拆分数组的
@@ -338,6 +352,9 @@ func HandleRoleData(db1, db2, db3, db4 *gorm.DB) error {
 		for _, v := range r {
 			index, _ := map1[v.RoleID]
 			roles1[index].RofbidFlag = 1
+
+			// 记录封禁的号
+			mapRoleIDsRf[v.RoleID] = v.RoleID
 		}
 	}
 	//////////////////////////////////////////
@@ -375,7 +392,7 @@ func HandleRoleData(db1, db2, db3, db4 *gorm.DB) error {
 	SetCurrent(Stage_80, "", delta)
 
 	// handle role guild
-	err = HandleGuildRelation(db1, db2, roles1, lengthRole1)
+	err = HandleGuildRelation(db1, db2, roles1, lengthRole1, mapRoleIDsRf)
 	if err != nil {
 		return err
 	}

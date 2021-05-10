@@ -499,8 +499,8 @@ func BatchUpdate(db *gorm.DB, t int, arr interface{}, args ...map[string]interfa
 			end := int(math.Min(float64((i+1)*20000), float64(repeatLength)))
 			start := i * 20000
 			for j := start; j < end; j++ {
-				buffer.WriteString(fmt.Sprintf("update role_data set role_name='%s', rofbid_flag=%d, role_name_origin='%s' where role_id=%d;",
-					rd[j].RoleName, rd[j].RofbidFlag, rd[j].RoleNameOrigin, rd[j].RoleID))
+				buffer.WriteString(fmt.Sprintf("update role_data set role_name='%s', rofbid_flag=%d, role_name_origin='%s', guild_id=%d where role_id=%d;",
+					rd[j].RoleName, rd[j].RofbidFlag, rd[j].RoleNameOrigin, rd[j].GuildID, rd[j].RoleID))
 			}
 
 			str := buffer.String()
