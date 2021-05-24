@@ -126,7 +126,7 @@ type RoleData struct {
 	BankLimit                uint32  `gorm:"not null;column:banklimit"`
 	ExBagStep                uint8   `gorm:"not null;column:exbagstep;default:1"`
 	ExWareStep               uint8   `gorm:"not null;column:exwarestep;default:1"`
-	Vigour                   uint16  `gorm:"not null;column:vigour"`
+	Vigour                   uint32  `gorm:"not null;column:vigour;default:0"`
 	TodayOnlineTick          uint32  `gorm:"not null;column:today_online_tick"`
 	HistoryVigourCost        uint32  `gorm:"not null;column:history_vigour_cost"`
 	WareSize                 uint16  `gorm:"not null;column:ware_size;default:30"`
