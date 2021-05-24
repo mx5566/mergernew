@@ -86,6 +86,7 @@ func HandleMailByIncreaseID(db1, db2 *gorm.DB) (map[uint32]uint32, error) {
 	return mapIDs, nil
 }
 
+
 func HandleMailItem(db1, db2 *gorm.DB, mapItems map[int64]*ItemEx, mapMails map[uint32]uint32) error {
 	var mailItems []*Mail
 	err := db2.Table("mail").Find(&mailItems).Error
