@@ -10,7 +10,7 @@ type Buff struct {
 	ItemTypeID    uint32 `gorm:"column:item_type_id"`
 	ItemSerialID  int64  `gorm:"column:item_serial_id"`
 	BuffID        uint32 `gorm:"primaryKey;column:buff_id;autoIncrement:false"`
-	CurTick       uint32 `gorm:"column:cur_tick"`
+	CurTick       int64  `gorm:"column:cur_tick"`
 	Level         int8   `gorm:"column:level"`
 	CurLapTimes   int8   `gorm:"column:cur_lap_times"`
 	EffectSkillID []byte `gorm:"column:effect_skill_id"`

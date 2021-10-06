@@ -10,7 +10,7 @@ type Skill struct {
 	ID          uint32 `gorm:"primaryKey;column:id;autoIncrement:false"`
 	BiddenLevel int8   `gorm:"not null;column:bidden_level"`
 	SelfLevel   int8   `gorm:"not null;column:self_level;default:0"`
-	Proficiency int32  `gorm:"not null;column:proficiency;default:0"`
+	Proficiency int64  `gorm:"not null;column:proficiency;default:0"`
 	CoolDown    int32  `gorm:"not null;column:cooldown"`
 }
 

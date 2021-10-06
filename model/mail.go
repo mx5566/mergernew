@@ -14,8 +14,8 @@ type Mail struct {
 	IsSend        uint8  `gorm:"column:is_send"`
 	IsRead        uint8  `gorm:"column:is_read"`
 	IsWidthDrawal uint8  `gorm:"column:is_withdrawal"`
-	Solve         uint32 `gorm:"column:solve"`
-	GiveMoney     uint32 `gorm:"column:give_money"`
+	Solve         int64  `gorm:"column:solve"`
+	GiveMoney     int64  `gorm:"column:give_money"`
 	ItemSerial    []byte `gorm:"column:item_serial"`
 	SendTime      string `gorm:"column:send_time;char(20)"`
 	RecvTime      string `gorm:"column:recv_time;char(20)"`
@@ -85,7 +85,6 @@ func HandleMailByIncreaseID(db1, db2 *gorm.DB) (map[uint32]uint32, error) {
 
 	return mapIDs, nil
 }
-
 
 func HandleMailItem(db1, db2 *gorm.DB, mapItems map[int64]*ItemEx, mapMails map[uint32]uint32) error {
 	var mailItems []*Mail

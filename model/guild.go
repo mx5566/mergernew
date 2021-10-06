@@ -17,7 +17,7 @@ type Guild struct {
 	HoldCity0         uint8     `gorm:"not null;column:hold_city0"`
 	HoldCity1         uint8     `gorm:"not null;column:hold_city1"`
 	HoldCity2         uint8     `gorm:"not null;column:hold_city2"`
-	Fund              int32     `gorm:"not null;column:fund"`
+	Fund              int64     `gorm:"not null;column:fund"`
 	Material          int32     `gorm:"not null;column:material"`
 	Reputation        int32     `gorm:"not null;column:reputation"`
 	DailyCost         int32     `gorm:"not null;column:daily_cost"`

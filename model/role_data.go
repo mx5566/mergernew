@@ -36,22 +36,22 @@ type RoleData struct {
 	Class                    int8    `gorm:"not null;default:1;column:class"`
 	ClassEx                  int8    `gorm:"not null;column:classex"`
 	Level                    int32   `gorm:"not null;column:level;default:1"`
-	ExpCurLevel              uint32  `gorm:"not null;column:exp_cur_level"`
+	ExpCurLevel              int64   `gorm:"not null;column:exp_cur_level"`
 	Hp                       int64   `gorm:"not null;column:hp"`
 	Mp                       int64   `gorm:"not null;column:mp"`
-	Rage                     uint32  `gorm:"not null;column:rage"`
-	Endurance                int32   `gorm:"not null;column:endurance;default:-1"`
-	Vitality                 int32   `gorm:"not null;column:vitality;default:-1"`
-	Injury                   uint32  `gorm:"not null;column:injury"`
-	Knowledge                uint32  `gorm:"not null;column:knowledge"`
-	Morale                   uint32  `gorm:"not null;column:morale;default:100"`
-	Morality                 uint32  `gorm:"not null;column:morality"`
+	Rage                     int64   `gorm:"not null;column:rage"`
+	Endurance                int64   `gorm:"not null;column:endurance;default:-1"`
+	Vitality                 int64   `gorm:"not null;column:vitality;default:-1"`
+	Injury                   int64   `gorm:"not null;column:injury"`
+	Knowledge                int64   `gorm:"not null;column:knowledge"`
+	Morale                   int64   `gorm:"not null;column:morale;default:100"`
+	Morality                 int64   `gorm:"not null;column:morality"`
 	Culture                  uint32  `gorm:"not null;column:culture"`
 	Credit                   uint32  `gorm:"not null;column:credit"`
 	Identity                 uint8   `gorm:"not null;column:identity"`
 	VipPoint                 uint32  `gorm:"not null;column:vip_point"`
-	AttAvail                 uint16  `gorm:"not null;column:att_avail"`
-	TalentAvail              uint32  `gorm:"not null;column:talent_avail"`
+	AttAvail                 int64   `gorm:"not null;column:att_avail"`
+	TalentAvail              int64   `gorm:"not null;column:talent_avail"`
 	PhysiqueAdded            uint16  `gorm:"not null;column:physique_added"`
 	StrengthAdded            uint16  `gorm:"not null;column:strength_added"`
 	PneumaAdded              uint16  `gorm:"not null;column:pneuma_added"`
@@ -70,13 +70,13 @@ type RoleData struct {
 	PkValue                  uint32  `gorm:"not null;column:pk_value"`
 	CloseSafeGuardTime       string  `gorm:"not null;column:close_safe_guard_time;char(20)"`
 	BagSize                  int16   `gorm:"not null;column:bag_size;default:40"`
-	BagGold                  int32   `gorm:"not null;column:bag_gold"`
+	BagGold                  int64   `gorm:"not null;column:bag_gold"`
 	BagSilver                int32   `gorm:"not null;column:bag_silver"`
 	BagCopper                uint32  `gorm:"not null;column:bag_copper"`
-	BagBindGold              uint32  `gorm:"not null;column:bag_bind_gold"`
+	BagBindGold              int64   `gorm:"not null;column:bag_bind_gold"`
 	BagBindSilver            uint32  `gorm:"not null;column:bag_bind_silver"`
 	BagBindCopper            uint32  `gorm:"not null;column:bag_bind_copper"`
-	BagYuanBao               int32   `gorm:"not null;column:bag_yuanbao"`
+	BagYuanBao               int64   `gorm:"not null;column:bag_yuanbao"`
 	ExchangeVolume           int32   `gorm:"not null;column:exchange_volume"`
 	GuildID                  uint32  `gorm:"not null;column:guild_id;default:4294967295"`
 	TeamID                   uint32  `gorm:"not null;column:team_id;default:4294967295"`
@@ -108,7 +108,7 @@ type RoleData struct {
 	HangNum                  uint8   `gorm:"not null;column:hang_num"`
 	IsExp                    uint8   `gorm:"not null;column:is_exp"`
 	IsBrotherhood            uint8   `gorm:"not null;column:is_brotherhood"`
-	LeaveExp                 uint32  `gorm:"not null;column:leave_exp"`
+	LeaveExp                 int64   `gorm:"not null;column:leave_exp"`
 	LeaveBrotherhood         uint32  `gorm:"not null;column:leave_brotherhood"`
 	PetPacketNum             uint32  `gorm:"not null;column:pet_packet_num;default:1"`
 	RoleHelp                 []byte  `gorm:"column:role_help"`
@@ -126,9 +126,9 @@ type RoleData struct {
 	BankLimit                uint32  `gorm:"not null;column:banklimit"`
 	ExBagStep                uint8   `gorm:"not null;column:exbagstep;default:1"`
 	ExWareStep               uint8   `gorm:"not null;column:exwarestep;default:1"`
-	Vigour                   uint32  `gorm:"not null;column:vigour;default:0"`
+	Vigour                   int64   `gorm:"not null;column:vigour;default:0"`
 	TodayOnlineTick          uint32  `gorm:"not null;column:today_online_tick"`
-	HistoryVigourCost        uint32  `gorm:"not null;column:history_vigour_cost"`
+	HistoryVigourCost        int64   `gorm:"not null;column:history_vigour_cost"`
 	WareSize                 uint16  `gorm:"not null;column:ware_size;default:30"`
 	WareGold                 uint32  `gorm:"not null;column:ware_gold"`
 	WareSilver               uint32  `gorm:"not null;column:ware_silver"`
