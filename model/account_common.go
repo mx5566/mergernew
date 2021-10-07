@@ -113,8 +113,8 @@ func HandleAccountCommon(db1, db2 *gorm.DB) error {
 		r1 := uint64(data.BaiBaoYuanBao)
 		r2 := uint64(v2.BaiBaoYuanBao)
 
-		if r1+r2 > uint64(math.MaxInt32) {
-			v2.BaiBaoYuanBao = math.MaxInt32
+		if r1+r2 > uint64(math.MaxInt64) {
+			v2.BaiBaoYuanBao = math.MaxInt64
 		} else {
 			v2.BaiBaoYuanBao += data.BaiBaoYuanBao
 		}

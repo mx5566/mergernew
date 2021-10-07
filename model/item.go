@@ -61,7 +61,7 @@ type Item struct {
 	CreateBind      int8           `gorm:"column:create_bind;not null"`
 	StrExternData   []byte         `gorm:"type:bytes;column:strdwExternData"`
 	ItenOld         sql.NullInt64  `gorm:"column:item_old"`
-	Source          sql.NullString `gorm:"size(100);column:source"`
+	Source          sql.NullString `gorm:"size(32);column:source"`
 }
 
 func (m *Item) TableName() string {

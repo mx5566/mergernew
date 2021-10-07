@@ -7,4 +7,3 @@ windres.exe -i yc.rc -o yc.syso
 rem cd ..
 rem call go build -ldflags "-H windowsgui"
 
-pause
